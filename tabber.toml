@@ -1,0 +1,23 @@
+#includes = ["include.toml"]
+
+[hi.tab]
+name = "HI!"
+
+[hi.echo_hi]
+name = "echo hi"
+command = "echo hi"
+
+[hi.echo_hello]
+name = "echo hello"
+command = "echo hello"
+
+[hello.tab]
+name = "HELLO!"
+
+[hello.echo_hello]
+name = "echo hello"
+command = "echo hello"
+
+[hello.echo_hi]
+name = "echo hi"
+command = "echo hi"
