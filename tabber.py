@@ -43,13 +43,21 @@ def show_tab(widget):
 def run_cmd(cmd): subprocess.run(cmd, shell=True)
 
 tab_dict = {}
+img_map = {"": photo.subsample(2,2) }
+
+def get_image(path, subsample=(1,1)):
+    if not path in img_map and os.path.exists(path):
+        img_map[path] = tkinter.PhotoImage(file=path).subsample(*subsample)
+    return img_map[path]
+
+
 def create_tab(tab):
     if "tab" in tab:
         conf = tab["tab"]
         tab_name = conf["name"] if "name" in conf else "tab_name"
         tab_icon = conf["icon"] if "icon" in conf else ""
-        if os.path.exists(tab_icon): image = tkinter.PhotoImage(file=tab_icon)
-        else: image = photo
+        tab_icon_subsample = conf["icon_subsample"] if "icon_subsample" in conf else (1,1)
+        image = get_image(tab_icon, tab_icon_subsample)
         tab_button = tkinter.Button(tabs, text=tab_name, image=image, compound="left")
         tab_button.pack(side="left")
         tab_button.bind("<Button-1>", lambda x: show_tab(x.widget))
@@ -60,8 +68,8 @@ def create_tab(tab):
             cmd = tab[sec]["command"] if "command" in tab[sec] else "no_command"
             default_name = os.path.basename(shlex.split(cmd)[0])
             name = tab[sec]["name"] if "name" in tab[sec] else default_name
-            if os.path.exists(icon): image = tkinter.PhotoImage(file=icon)
-            else: image = photo
+            icon_subsample = tab[sec]["icon_subsample"] if "icon_subsample" in tab[sec] else (1,1)
+            image = get_image(icon, icon_subsample)
             button = tkinter.Button(butts, text=name, image=image, compound="left")
             button.bind("<Button-1>", lambda x, cmd=cmd: run_cmd(cmd))
             try: Hovertip(button, ">"+cmd, 500)

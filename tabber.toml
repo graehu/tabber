@@ -6,6 +6,8 @@ name = "HI!"
 [hi.echo_hi]
 name = "echo hi"
 command = "echo hi"
+icon = "tabber.png"
+icon_subsample = [4,4]
 
 [hi.echo_hello]
 name = "echo hello"
