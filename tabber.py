@@ -4,6 +4,7 @@ import shlex
 import zlib
 import os
 import subprocess
+from idlelib.tooltip import Hovertip
 
 master=tkinter.Tk()
 master.title("Tabs and Buttons")
@@ -41,7 +42,6 @@ def run_cmd(cmd): subprocess.run(cmd, shell=True)
 
 tab_dict = {}
 def create_tab(tab):
-    print(tab)
     if "tab" in tab:
         conf = tab["tab"]
         tab_name = conf["name"] if "name" in conf else "tab_name"
@@ -49,7 +49,6 @@ def create_tab(tab):
         if os.path.exists(tab_icon): image = tkinter.PhotoImage(file=tab_icon)
         else: image = photo
         tab_button = tkinter.Button(tabs, text=tab_name, image=image, compound="left")
-        tab_button.pack(side="left")
         tab_button.pack(side="left")
         tab_button.bind("<Button-1>", lambda x: show_tab(x.widget))
         tab_butts = []
@@ -63,8 +62,10 @@ def create_tab(tab):
             else: image = photo
             button = tkinter.Button(butts, text=name, image=image, compound="left")
             button.bind("<Button-1>", lambda x, cmd=cmd: run_cmd(cmd))
+            Hovertip(button, ">"+cmd, 500)
             tab_butts.append(button)
         tab_dict[tab_name] = {"tab": tab_button, "buttons": tab_butts}
+
 
 
 while "includes" in settings:
