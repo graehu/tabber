@@ -4,7 +4,8 @@ import shlex
 import zlib
 import os
 import subprocess
-from idlelib.tooltip import Hovertip
+try: from idlelib.tooltip import Hovertip
+except Exception: pass
 
 master=tkinter.Tk()
 master.title("Tabs and Buttons")
@@ -62,7 +63,8 @@ def create_tab(tab):
             else: image = photo
             button = tkinter.Button(butts, text=name, image=image, compound="left")
             button.bind("<Button-1>", lambda x, cmd=cmd: run_cmd(cmd))
-            Hovertip(button, ">"+cmd, 500)
+            try: Hovertip(button, ">"+cmd, 500)
+            except Exception: pass
             tab_butts.append(button)
         tab_dict[tab_name] = {"tab": tab_button, "buttons": tab_butts}
 
