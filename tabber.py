@@ -77,12 +77,16 @@ tabs.pack(side="top", expand=False, fill="both")
 spacer.pack(side="top", expand=False, fill="both")
 butts.pack(side="top", expand=True, fill="both")
 
-
-def show_tab(widget):
+current_tab = None
+def show_tab(widget : tkinter.Widget):
+    global current_tab
+    if current_tab: current_tab.configure(relief=tkinter.RAISED)
+    current_tab = widget
     name = widget.cget("text")
     tab_butts = tab_dict[name]["buttons"]
     for child in butts.winfo_children(): child.pack_forget()
     for button in tab_butts: button.pack(side="top", expand=True, fill="both")
+    master.after(1, lambda widget=widget:widget.configure(relief=tkinter.RIDGE))
 
 
 def run_cmd(cmd): subprocess.run(cmd, shell=True)

@@ -2,6 +2,6 @@ includes = ["tabber.toml"]
 
 [included.include]
 name = "easy inclusion"
-command = "echo I'm included"
+command = "echo I\\'m included"
 icon = "tabber.png"
 icon_subsample = [16,16]
