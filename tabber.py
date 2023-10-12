@@ -2,18 +2,63 @@ import tkinter
 import tomllib
 import shlex
 import os
+import sys
 import subprocess
 try: from idlelib.tooltip import Hovertip
 except Exception: pass
+
+class pushd:
+    path = ""
+    old_path = ""
+    def __init__(self, path):
+        self.path = os.path.abspath(path)
+        self.old_path = os.getcwd()
+
+    def __enter__(self):
+        os.chdir(self.path)
+        return self
+
+    def __exit__(self, type, value, traceback):
+        os.chdir(self.old_path)
+
+# Handle settings
+try: settings_file = sys.argv[1] if os.path.exists(sys.argv[1]) else os.path.dirname(__file__)+"/tabber.toml"
+except: settings_file = os.path.dirname(__file__)+"/tabber.toml"
+settings = tomllib.load(open(settings_file, "rb"))
+curdir = os.path.dirname(settings_file)
+os.chdir(curdir)
+
+def recursive_abspath(dictionary, in_key):
+    for key, value in dictionary.items():
+        if type(value) is dict:
+            recursive_abspath(value, in_key)
+        elif key == in_key:
+            dictionary[key] = os.path.abspath(dictionary[key])
+
+included = []
+while "includes" in settings:
+    inc_settings = []
+    for include in settings["includes"]:
+         include = os.path.abspath(include)
+         if not include in included:
+            included.append(include)
+            inc = tomllib.load(open(include, "rb"))
+            with pushd(os.path.dirname(include)):
+                if "includes" in inc: inc["includes"] = [os.path.abspath(p) for p in inc["includes"]]
+                recursive_abspath(inc, "icon")
+            inc_settings.append(inc)
+    del settings["includes"]
+    for new_settings in inc_settings:
+        settings = {**settings, **new_settings}
+
+# Setup Tkinter
 
 master=tkinter.Tk()
 master.title("Tabs and Buttons")
 master.geometry("350x275")
 master.configure(borderwidth=5)
-curdir = os.path.dirname(__file__)
-os.chdir(curdir)
 
-photo=tkinter.PhotoImage(file='tabber.png')
+photo=tkinter.PhotoImage(file=os.path.dirname(__file__)+'/tabber.png')
 master.wm_iconphoto(False, photo.subsample(4,4))
 photo = photo.subsample(8,8)
 
@@ -26,7 +71,7 @@ spacer = tkinter.Frame(master)
 # "Styling"
 tabs.config(bg="grey")
 spacer.config(height=2, bg="grey")
-settings = tomllib.load(open("tabber.toml", "rb"))
+
  
 tabs.pack(side="top", expand=False, fill="both")
 spacer.pack(side="top", expand=False, fill="both")
@@ -43,7 +88,7 @@ def show_tab(widget):
 def run_cmd(cmd): subprocess.run(cmd, shell=True)
 
 tab_dict = {}
-img_map = {"": photo.subsample(2,2) }
+img_map = {"": None } # photo.subsample(2,2)
 
 def get_image(path, subsample=(1,1)):
     if not path in img_map and os.path.exists(path):
@@ -66,7 +111,8 @@ def create_tab(tab):
             if sec == "tab": continue
             icon = tab[sec]["icon"] if "icon" in tab[sec] else ""
             cmd = tab[sec]["command"] if "command" in tab[sec] else "no_command"
-            default_name = os.path.basename(shlex.split(cmd)[0])
+            try: default_name = os.path.basename(shlex.split(cmd)[0])
+            except: default_name = os.path.basename(cmd)
             name = tab[sec]["name"] if "name" in tab[sec] else default_name
             icon_subsample = tab[sec]["icon_subsample"] if "icon_subsample" in tab[sec] else (1,1)
             image = get_image(icon, icon_subsample)
@@ -77,15 +123,6 @@ def create_tab(tab):
             tab_butts.append(button)
         tab_dict[tab_name] = {"tab": tab_button, "buttons": tab_butts}
 
-
-
-while "includes" in settings:
-    inc_settings = []
-    for include in settings["includes"]:
-         inc_settings.append(tomllib.load(open(include, "rb")))
-    del settings["includes"]
-    for new_settings in inc_settings:
-        settings = {**settings, **new_settings}
 
 for tab in settings:
     new_tab = settings[tab]
