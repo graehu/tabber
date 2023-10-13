@@ -10,13 +10,19 @@ import threading
 
 class CmdButton(tkinter.Button):
     cmd = ""
+    show_status = False
     thread = None
-    def __init__(self, cmd, *args, **kwargs):
+    def __init__(self, cmd, show_status, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.cmd = cmd
+        self.show_status = show_status
+        self.bind("<Button-1>", lambda x, y=self: y.on_click())
     def _run_thread(self):
         self.config(state="disabled")
-        subprocess.Popen(self.cmd, shell=True).wait()
+        if self.show_status: self.config(bg="grey80")
+        ret = subprocess.Popen(self.cmd, shell=True).wait()
+        if self.show_status and ret == 0: self.config(bg="green3", activebackground="green2")
+        elif self.show_status: self.config(bg="red2",activebackground="red1")
         self.config(state="normal")
     def on_click(self):
         if self.thread == None or not self.thread.is_alive():
@@ -130,13 +136,13 @@ def create_tab(tab):
             if sec == "tab": continue
             icon = tab[sec]["icon"] if "icon" in tab[sec] else ""
             cmd = tab[sec]["command"] if "command" in tab[sec] else "no_command"
+            show_status = tab[sec]["show_status"] if "show_status" in tab[sec] else False
             try: default_name = os.path.basename(shlex.split(cmd)[0])
             except: default_name = os.path.basename(cmd)
             name = tab[sec]["name"] if "name" in tab[sec] else default_name
             icon_subsample = tab[sec]["icon_subsample"] if "icon_subsample" in tab[sec] else (1,1)
             image = get_image(icon, icon_subsample)
-            button = CmdButton(cmd, butts, text=name, image=image, compound="left")
-            button.bind("<Button-1>", lambda x, button=button: button.on_click())
+            button = CmdButton(cmd, show_status, butts, text=name, image=image, compound="left")
             try: Hovertip(button, ">"+cmd, 500)
             except Exception: pass
             tab_butts.append(button)

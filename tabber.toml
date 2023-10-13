@@ -7,9 +7,10 @@ name = "HI!"
 name = "echo hi"
 command = "echo hi"
 
-[hi.echo_hello]
-name = "sleep for 10 seconds"
-command = "sleep 10s"
+[hi.sleep]
+name = "sleep for 1 second"
+command = "sleep 1s"
+show_status = true
 
 [hello.tab]
 name = "HELLO!"
