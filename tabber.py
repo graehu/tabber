@@ -6,6 +6,23 @@ import sys
 import subprocess
 try: from idlelib.tooltip import Hovertip
 except Exception: pass
+import threading
+
+class CmdButton(tkinter.Button):
+    cmd = ""
+    thread = None
+    def __init__(self, cmd, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.cmd = cmd
+    def _run_thread(self):
+        self.config(state="disabled")
+        subprocess.Popen(self.cmd, shell=True).wait()
+        self.config(state="normal")
+    def on_click(self):
+        if self.thread == None or not self.thread.is_alive():
+            self.thread = threading.Thread(target=lambda x: x._run_thread(), args=[self])
+            self.thread.start()
+        pass
 
 class pushd:
     path = ""
@@ -54,7 +71,8 @@ while "includes" in settings:
 # Setup Tkinter
 
 master=tkinter.Tk()
-master.title("Tabs and Buttons")
+title = settings["title"] if "title" in settings else "tabber"
+master.title(title)
 master.geometry("350x275")
 master.configure(borderwidth=5)
 
@@ -88,9 +106,6 @@ def show_tab(widget : tkinter.Widget):
     for button in tab_butts: button.pack(side="top", expand=True, fill="both")
     master.after(1, lambda widget=widget:widget.configure(relief=tkinter.RIDGE))
 
-
-def run_cmd(cmd): subprocess.run(cmd, shell=True)
-
 tab_dict = {}
 img_map = {"": None } # photo.subsample(2,2)
 
@@ -120,8 +135,8 @@ def create_tab(tab):
             name = tab[sec]["name"] if "name" in tab[sec] else default_name
             icon_subsample = tab[sec]["icon_subsample"] if "icon_subsample" in tab[sec] else (1,1)
             image = get_image(icon, icon_subsample)
-            button = tkinter.Button(butts, text=name, image=image, compound="left")
-            button.bind("<Button-1>", lambda x, cmd=cmd: run_cmd(cmd))
+            button = CmdButton(cmd, butts, text=name, image=image, compound="left")
+            button.bind("<Button-1>", lambda x, button=button: button.on_click())
             try: Hovertip(button, ">"+cmd, 500)
             except Exception: pass
             tab_butts.append(button)

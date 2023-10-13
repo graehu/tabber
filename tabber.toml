@@ -8,8 +8,8 @@ name = "echo hi"
 command = "echo hi"
 
 [hi.echo_hello]
-name = "echo hello"
-command = "echo hello"
+name = "sleep for 10 seconds"
+command = "sleep 10s"
 
 [hello.tab]
 name = "HELLO!"
