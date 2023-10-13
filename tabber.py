@@ -1,6 +1,5 @@
 import tkinter
 import tomllib
-import shlex
 import os
 import sys
 import subprocess
@@ -121,39 +120,37 @@ def get_image(path, subsample=(1,1)):
     return img_map[path]
 
 
-def create_tab(tab):
-    if "tab" in tab:
-        conf = tab["tab"]
-        tab_name = conf["name"] if "name" in conf else "tab_name"
-        tab_icon = conf["icon"] if "icon" in conf else ""
-        tab_icon_subsample = conf["icon_subsample"] if "icon_subsample" in conf else (1,1)
-        image = get_image(tab_icon, tab_icon_subsample)
-        tab_button = tkinter.Button(tabs, text=tab_name, image=image, compound="left")
-        tab_button.pack(side="left")
-        tab_button.bind("<Button-1>", lambda x: show_tab(x.widget))
-        tab_butts = []
-        for sec in tab:
-            if sec == "tab": continue
-            icon = tab[sec]["icon"] if "icon" in tab[sec] else ""
-            cmd = tab[sec]["command"] if "command" in tab[sec] else "no_command"
-            show_status = tab[sec]["show_status"] if "show_status" in tab[sec] else False
-            try: default_name = os.path.basename(shlex.split(cmd)[0])
-            except: default_name = os.path.basename(cmd)
-            name = tab[sec]["name"] if "name" in tab[sec] else default_name
-            icon_subsample = tab[sec]["icon_subsample"] if "icon_subsample" in tab[sec] else (1,1)
+def create_tab(tab_name, tab):
+    tab_icon = ""
+    tab_icon_subsample = (1,1)
+    tab_button = tkinter.Button(tabs)
+    tab_button.pack(side="left")
+    tab_button.bind("<Button-1>", lambda x: show_tab(x.widget))
+    tab_butts = []
+    for sec in tab:
+        section = tab[sec]
+        if isinstance(section, dict):
+            icon = section["icon"] if "icon" in section else ""
+            cmd = section["command"] if "command" in section else "no_command"
+            show_status = section["show_status"] if "show_status" in section else False
+            name = section["name"] if "name" in section else sec
+            icon_subsample = section["icon_subsample"] if "icon_subsample" in section else (1,1)
             image = get_image(icon, icon_subsample)
             button = CmdButton(cmd, show_status, butts, text=name, image=image, compound="left")
             try: Hovertip(button, ">"+cmd, 500)
             except Exception: pass
             tab_butts.append(button)
-        tab_dict[tab_name] = {"tab": tab_button, "buttons": tab_butts}
+        elif sec == "name": tab_name = section
+        elif sec == "icon": tab_icon = section
+        elif sec == "icon_subsample": tab_icon = section
+    image = get_image(tab_icon, tab_icon_subsample)
+    tab_button.configure(text=tab_name, image=image, compound="left")
+    tab_dict[tab_name] = {"tab": tab_button, "buttons": tab_butts}
 
 
 for tab in settings:
     new_tab = settings[tab]
-    if isinstance(new_tab, dict):
-        if not "tab" in new_tab: new_tab["tab"] = {"name":tab}
-        create_tab(new_tab)
+    if isinstance(new_tab, dict): create_tab(tab, new_tab)
 
 show_tab(tabs.winfo_children()[0])
 

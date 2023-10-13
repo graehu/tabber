@@ -1,19 +1,15 @@
 includes = ["include.toml"]
 
-[hi.tab]
+[hi]
 name = "HI!"
 
 [hi.echo_hi]
-name = "echo hi"
 command = "echo hi"
 
 [hi.sleep]
 name = "sleep for 1 second"
 command = "sleep 1s"
 show_status = true
-
-[hello.tab]
-name = "HELLO!"
 
 [hello.echo_hello]
 name = "echo hello"
