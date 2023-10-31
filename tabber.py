@@ -6,27 +6,33 @@ import subprocess
 try: from idlelib.tooltip import Hovertip
 except Exception: pass
 import threading
+import webbrowser
 
 class CmdButton(tkinter.Button):
     cmd = ""
     show_status = False
     thread = None
-    def __init__(self, cmd, show_status, *args, **kwargs):
+    cmd_file = ""
+    def __init__(self, cmd, show_status, cmd_file, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.cmd = cmd
         self.show_status = show_status
-        self.bind("<Button-1>", lambda x, y=self: y.on_click())
+        self.cmd_file = cmd_file
+        self.bind("<Button-1>", lambda x, y=self: y.on_l_click())
+        self.bind("<Button-3>", lambda x, y=self: y.on_r_click())
     def _run_thread(self):
         self.config(state="disabled")
         if self.show_status: self.config(bg="grey80")
-        ret = subprocess.Popen(self.cmd, shell=True).wait()
+        ret = subprocess.Popen(self.cmd, creationflags=subprocess.CREATE_NEW_CONSOLE).wait()
         if self.show_status and ret == 0: self.config(bg="green3", activebackground="green2")
         elif self.show_status: self.config(bg="red2",activebackground="red1")
         self.config(state="normal")
-    def on_click(self):
+    def on_l_click(self):
         if self.thread == None or not self.thread.is_alive():
             self.thread = threading.Thread(target=lambda x: x._run_thread(), args=[self])
             self.thread.start()
+    def on_r_click(self):
+        webbrowser.open(self.cmd_file)
         pass
 
 class pushd:
@@ -57,6 +63,12 @@ def recursive_abspath(dictionary, in_key):
         elif key == in_key:
             dictionary[key] = os.path.abspath(dictionary[key])
 
+def recursive_add_keyval(dictionary, in_key, in_value):
+    for key, value in dictionary.items():
+        if type(value) is dict:
+            value[in_key] = in_value
+            recursive_add_keyval(value, in_key, in_value)
+
 included = []
 while "includes" in settings:
     inc_settings = []
@@ -65,7 +77,8 @@ while "includes" in settings:
          if not include in included:
             included.append(include)
             inc = tomllib.load(open(include, "rb"))
-            with pushd(os.path.dirname(include)):
+            recursive_add_keyval(inc, "origin_toml", include)
+            with pushd(os.path.dirname(include)):                
                 if "includes" in inc: inc["includes"] = [os.path.abspath(p) for p in inc["includes"]]
                 recursive_abspath(inc, "icon")
             inc_settings.append(inc)
@@ -131,12 +144,13 @@ def create_tab(tab_name, tab):
         section = tab[sec]
         if isinstance(section, dict):
             icon = section["icon"] if "icon" in section else ""
+            toml_file = section["origin_toml"] if "origin_toml" in section else settings_file
             cmd = section["command"] if "command" in section else "no_command"
             show_status = section["show_status"] if "show_status" in section else False
             name = section["name"] if "name" in section else sec
             icon_subsample = section["icon_subsample"] if "icon_subsample" in section else (1,1)
             image = get_image(icon, icon_subsample)
-            button = CmdButton(cmd, show_status, butts, text=name, image=image, compound="left")
+            button = CmdButton(cmd, show_status, toml_file, butts, text=name, image=image, compound="left")
             try: Hovertip(button, ">"+cmd, 500)
             except Exception: pass
             tab_butts.append(button)
