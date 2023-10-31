@@ -1,5 +1,6 @@
 import tkinter
 import tomllib
+import shlex
 import os
 import sys
 import subprocess
@@ -13,17 +14,31 @@ class CmdButton(tkinter.Button):
     show_status = False
     thread = None
     cmd_file = ""
+    menu = None
     def __init__(self, cmd, show_status, cmd_file, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.cmd = cmd
         self.show_status = show_status
         self.cmd_file = cmd_file
         self.bind("<Button-1>", lambda x, y=self: y.on_l_click())
-        self.bind("<Button-3>", lambda x, y=self: y.on_r_click())
+        self.menu = tkinter.Menu(self, tearoff = 0)
+        self.menu.bind("<Leave>", lambda x, m=self.menu: m.unpost())
+        self.menu.add_command(label ="edit button", command=lambda s=self: webbrowser.open(s.cmd_file))
+        self.menu.add_command(label ="copy command", command=lambda s=self: set_clipboard(s.cmd))
+        self.bind("<Button-3>", lambda x, s=self: s.show_menu(x))
+        # m.add_separator()
+        # m.add_command(label ="Rename")
+    def show_menu(self, event): 
+        try: 
+            self.menu.tk_popup(event.x_root, event.y_root) 
+        finally: 
+            self.menu.grab_release()
+            
     def _run_thread(self):
         self.config(state="disabled")
         if self.show_status: self.config(bg="grey80")
-        ret = subprocess.Popen(self.cmd, creationflags=subprocess.CREATE_NEW_CONSOLE).wait()
+        if os.name == "nt": ret = subprocess.Popen(self.cmd, creationflags=subprocess.CREATE_NEW_CONSOLE).wait()
+        else: ret = subprocess.Popen(shlex.split(self.cmd)).wait()
         if self.show_status and ret == 0: self.config(bg="green3", activebackground="green2")
         elif self.show_status: self.config(bg="red2",activebackground="red1")
         self.config(state="normal")
@@ -31,9 +46,6 @@ class CmdButton(tkinter.Button):
         if self.thread == None or not self.thread.is_alive():
             self.thread = threading.Thread(target=lambda x: x._run_thread(), args=[self])
             self.thread.start()
-    def on_r_click(self):
-        webbrowser.open(self.cmd_file)
-        pass
 
 class pushd:
     path = ""
@@ -49,12 +61,11 @@ class pushd:
     def __exit__(self, type, value, traceback):
         os.chdir(self.old_path)
 
-# Handle settings
-try: settings_file = sys.argv[1] if os.path.exists(sys.argv[1]) else os.path.dirname(__file__)+"/tabber.toml"
-except: settings_file = os.path.dirname(__file__)+"/tabber.toml"
-settings = tomllib.load(open(settings_file, "rb"))
-curdir = os.path.dirname(settings_file)
-os.chdir(curdir)
+
+def set_clipboard(text):
+    master.clipboard_clear()
+    master.clipboard_append(text)
+    master.update() # now it stays on the clipboard after the window is closed
 
 def recursive_abspath(dictionary, in_key):
     for key, value in dictionary.items():
@@ -68,6 +79,14 @@ def recursive_add_keyval(dictionary, in_key, in_value):
         if type(value) is dict:
             value[in_key] = in_value
             recursive_add_keyval(value, in_key, in_value)
+
+# Handle settings
+try: settings_file = sys.argv[1] if os.path.exists(sys.argv[1]) else os.path.dirname(__file__)+"/tabber.toml"
+except: settings_file = os.path.dirname(__file__)+"/tabber.toml"
+settings = tomllib.load(open(settings_file, "rb"))
+curdir = os.path.dirname(settings_file)
+os.chdir(curdir)
+
 
 included = []
 while "includes" in settings:
@@ -87,7 +106,6 @@ while "includes" in settings:
         settings = {**settings, **new_settings}
 
 # Setup Tkinter
-
 master=tkinter.Tk()
 title = settings["title"] if "title" in settings else "tabber"
 master.title(title)
