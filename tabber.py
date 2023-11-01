@@ -33,7 +33,7 @@ class CmdButton(tkinter.Button):
             self.menu.tk_popup(event.x_root, event.y_root) 
         finally: 
             self.menu.grab_release()
-            
+
     def _run_thread(self):
         self.config(state="disabled")
         if self.show_status: self.config(bg="grey80")
@@ -83,107 +83,144 @@ def recursive_add_keyval(dictionary, in_key, in_value):
 # Handle settings
 try: settings_file = sys.argv[1] if os.path.exists(sys.argv[1]) else os.path.dirname(__file__)+"/tabber.toml"
 except: settings_file = os.path.dirname(__file__)+"/tabber.toml"
-settings = tomllib.load(open(settings_file, "rb"))
-curdir = os.path.dirname(settings_file)
-os.chdir(curdir)
-
-
-included = []
-while "includes" in settings:
-    inc_settings = []
-    for include in settings["includes"]:
-         include = os.path.abspath(include)
-         if not include in included:
-            included.append(include)
-            inc = tomllib.load(open(include, "rb"))
-            recursive_add_keyval(inc, "origin_toml", include)
-            with pushd(os.path.dirname(include)):                
-                if "includes" in inc: inc["includes"] = [os.path.abspath(p) for p in inc["includes"]]
-                recursive_abspath(inc, "icon")
-            inc_settings.append(inc)
-    del settings["includes"]
-    for new_settings in inc_settings:
-        settings = {**settings, **new_settings}
 
 # Setup Tkinter
 master=tkinter.Tk()
-title = settings["title"] if "title" in settings else "tabber"
-master.title(title)
 master.geometry("350x275")
-master.configure(borderwidth=5)
+tab_num = 0
+included = []
 
-photo=tkinter.PhotoImage(file=os.path.dirname(__file__)+'/tabber.png')
-master.wm_iconphoto(False, photo.subsample(4,4))
-photo = photo.subsample(8,8)
+def build_widgets():
+    global included
+    for c in master.winfo_children(): c.destroy()
+    settings = tomllib.load(open(settings_file, "rb"))
+    curdir = os.path.dirname(settings_file)
+    os.chdir(curdir)
+    old_included = included
+    included = []
+    try:
+        while "includes" in settings:
+            inc_settings = []
+            for include in settings["includes"]:
+                include = os.path.abspath(include)
+                if not include in included:
+                    included.append(include)
+                    inc = tomllib.load(open(include, "rb"))
+                    recursive_add_keyval(inc, "origin_toml", include)
+                    with pushd(os.path.dirname(include)):                
+                        if "includes" in inc: inc["includes"] = [os.path.abspath(p) for p in inc["includes"]]
+                        recursive_abspath(inc, "icon")
+                    inc_settings.append(inc)
+            del settings["includes"]
+            for new_settings in inc_settings:
+                settings = {**settings, **new_settings}
+    except Exception as e:
+        error_message = include +": \n"+str(e)
+        lab = tkinter.Label(master, text=error_message)
+        lab.place(relx=0.5, rely=0.5, anchor=tkinter.CENTER)
+        # lab.pack()
+        included = old_included
+        return
 
+    title = settings["title"] if "title" in settings else "tabber"
+    master.title(title)
+    master.configure(borderwidth=5)
 
-# Create Frames
-tabs = tkinter.Frame(master)
-butts = tkinter.Frame(master)
-spacer = tkinter.Frame(master)
-
-# "Styling"
-tabs.config(bg="grey")
-spacer.config(height=2, bg="grey")
-
- 
-tabs.pack(side="top", expand=False, fill="both")
-spacer.pack(side="top", expand=False, fill="both")
-butts.pack(side="top", expand=True, fill="both")
-
-current_tab = None
-def show_tab(widget : tkinter.Widget):
-    global current_tab
-    if current_tab: current_tab.configure(relief=tkinter.RAISED)
-    current_tab = widget
-    name = widget.cget("text")
-    tab_butts = tab_dict[name]["buttons"]
-    for child in butts.winfo_children(): child.pack_forget()
-    for button in tab_butts: button.pack(side="top", expand=True, fill="both")
-    master.after(1, lambda widget=widget:widget.configure(relief=tkinter.RIDGE))
-
-tab_dict = {}
-img_map = {"": None } # photo.subsample(2,2)
-
-def get_image(path, subsample=(1,1)):
-    if not path in img_map and os.path.exists(path):
-        img_map[path] = tkinter.PhotoImage(file=path).subsample(*subsample)
-    return img_map[path]
-
-
-def create_tab(tab_name, tab):
-    tab_icon = ""
-    tab_icon_subsample = (1,1)
-    tab_button = tkinter.Button(tabs)
-    tab_button.pack(side="left")
-    tab_button.bind("<Button-1>", lambda x: show_tab(x.widget))
-    tab_butts = []
-    for sec in tab:
-        section = tab[sec]
-        if isinstance(section, dict):
-            icon = section["icon"] if "icon" in section else ""
-            toml_file = section["origin_toml"] if "origin_toml" in section else settings_file
-            cmd = section["command"] if "command" in section else "no_command"
-            show_status = section["show_status"] if "show_status" in section else False
-            name = section["name"] if "name" in section else sec
-            icon_subsample = section["icon_subsample"] if "icon_subsample" in section else (1,1)
-            image = get_image(icon, icon_subsample)
-            button = CmdButton(cmd, show_status, toml_file, butts, text=name, image=image, compound="left")
-            try: Hovertip(button, ">"+cmd, 500)
-            except Exception: pass
-            tab_butts.append(button)
-        elif sec == "name": tab_name = section
-        elif sec == "icon": tab_icon = section
-        elif sec == "icon_subsample": tab_icon = section
-    image = get_image(tab_icon, tab_icon_subsample)
-    tab_button.configure(text=tab_name, image=image, compound="left")
-    tab_dict[tab_name] = {"tab": tab_button, "buttons": tab_butts}
+    photo=tkinter.PhotoImage(file=os.path.dirname(__file__)+'/tabber.png')
+    master.wm_iconphoto(False, photo.subsample(4,4))
+    photo = photo.subsample(8,8)
 
 
-for tab in settings:
-    new_tab = settings[tab]
-    if isinstance(new_tab, dict): create_tab(tab, new_tab)
+    # Create Frames
+    tabs = tkinter.Frame(master)
+    butts = tkinter.Frame(master)
+    spacer = tkinter.Frame(master)
 
-show_tab(tabs.winfo_children()[0])
+    # "Styling"
+    tabs.config(bg="grey")
+    spacer.config(height=2, bg="grey")
 
+    
+    tabs.pack(side="top", expand=False, fill="both")
+    spacer.pack(side="top", expand=False, fill="both")
+    butts.pack(side="top", expand=True, fill="both")
+
+    current_tab = None
+    def show_tab(widget : tkinter.Widget):
+        nonlocal current_tab
+        global tab_num
+        if current_tab: current_tab.configure(relief=tkinter.RAISED)
+        current_tab = widget
+        tab_num = tabs.winfo_children().index(current_tab)
+        name = widget.cget("text")
+        tab_butts = tab_dict[name]["buttons"]
+        for child in butts.winfo_children(): child.pack_forget()
+        for button in tab_butts: button.pack(side="top", expand=True, fill="both")
+        master.after(1, lambda widget=widget:widget.configure(relief=tkinter.RIDGE))
+
+
+    tab_dict = {}
+    img_map = {"": None } # photo.subsample(2,2)
+
+    def get_image(path, subsample=(1,1)):
+        if not path in img_map and os.path.exists(path):
+            img_map[path] = tkinter.PhotoImage(file=path).subsample(*subsample)
+        return img_map[path]
+
+
+    def create_tab(tab_name, tab):
+        tab_icon = ""
+        tab_icon_subsample = (1,1)
+        tab_button = tkinter.Button(tabs)
+        tab_button.pack(side="left")
+        tab_button.bind("<Button-1>", lambda x: show_tab(x.widget))
+        tab_butts = []
+        for sec in tab:
+            section = tab[sec]
+            if isinstance(section, dict):
+                icon = section["icon"] if "icon" in section else ""
+                toml_file = section["origin_toml"] if "origin_toml" in section else settings_file
+                cmd = section["command"] if "command" in section else "no_command"
+                show_status = section["show_status"] if "show_status" in section else False
+                name = section["name"] if "name" in section else sec
+                icon_subsample = section["icon_subsample"] if "icon_subsample" in section else (1,1)
+                image = get_image(icon, icon_subsample)
+                button = CmdButton(cmd, show_status, toml_file, butts, text=name, image=image, compound="left")
+                try: Hovertip(button, ">"+cmd, 500)
+                except Exception: pass
+                tab_butts.append(button)
+            elif sec == "name": tab_name = section
+            elif sec == "icon": tab_icon = section
+            elif sec == "icon_subsample": tab_icon = section
+        image = get_image(tab_icon, tab_icon_subsample)
+        tab_button.configure(text=tab_name, image=image, compound="left")
+        tab_dict[tab_name] = {"tab": tab_button, "buttons": tab_butts}
+
+
+    for tab in settings:
+        new_tab = settings[tab]
+        if isinstance(new_tab, dict): create_tab(tab, new_tab)
+
+    if len(tabs.winfo_children()) > tab_num:
+        show_tab(tabs.winfo_children()[tab_num])
+    else:
+        show_tab(tabs.winfo_children()[0])
+    master.bind("<Control-s>", lambda x: build_widgets())
+
+build_widgets()
+mod_times = {}
+def watch_includes():
+    global included
+    wants_build = False
+    for inc in included:
+        if inc in mod_times:
+            if mod_times[inc] != os.path.getmtime(inc):
+                mod_times[inc] = os.path.getmtime(inc)
+                wants_build = True
+        else:
+            mod_times[inc] = os.path.getmtime(inc)
+    if wants_build: build_widgets()
+    master.after(500, watch_includes)
+
+watch_includes()
 master.mainloop()
