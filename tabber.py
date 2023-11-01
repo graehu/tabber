@@ -83,6 +83,7 @@ def recursive_add_keyval(dictionary, in_key, in_value):
 # Handle settings
 try: settings_file = sys.argv[1] if os.path.exists(sys.argv[1]) else os.path.dirname(__file__)+"/tabber.toml"
 except: settings_file = os.path.dirname(__file__)+"/tabber.toml"
+settings_file = os.path.abspath(settings_file)
 
 # Setup Tkinter
 master=tkinter.Tk()
@@ -93,7 +94,7 @@ included = []
 def build_widgets():
     global included
     for c in master.winfo_children(): c.destroy()
-    settings = tomllib.load(open(settings_file, "rb"))
+    settings = {"includes": [settings_file]}
     curdir = os.path.dirname(settings_file)
     os.chdir(curdir)
     old_included = included
@@ -118,7 +119,11 @@ def build_widgets():
         error_message = include +": \n"+str(e)
         lab = tkinter.Label(master, text=error_message)
         lab.place(relx=0.5, rely=0.5, anchor=tkinter.CENTER)
-        # lab.pack()
+        if os.path.exists(include):
+            webbrowser.open(include)
+            if not include in old_included: old_included.append(include)
+
+        master.after(100, lambda x: master.lift())
         included = old_included
         return
 
