@@ -43,7 +43,7 @@ class CmdButton(tkinter.Button):
         os.makedirs(os.path.dirname(log_path), exist_ok=True)
         with open(log_path, "w") as log:
             if self.show_status: self.config(bg="grey80")
-            if os.name == "nt": ret = subprocess.Popen(self.cmd, stdout=log, stderr=log, stdin=log creationflags=subprocess.CREATE_NEW_CONSOLE).wait()
+            if os.name == "nt": ret = subprocess.Popen(self.cmd, stdout=log, stderr=log, stdin=log, creationflags=subprocess.CREATE_NEW_CONSOLE).wait()
             else: ret = subprocess.Popen(self.cmd, shell=True, stdout=log, stderr=log, stdin=log).wait()
             if self.show_status and ret == 0: self.config(bg="green3", activebackground="green2")
             elif self.show_status: self.config(bg="red2",activebackground="red1")
