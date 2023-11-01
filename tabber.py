@@ -1,6 +1,5 @@
 import tkinter
 import tomllib
-import shlex
 import os
 import sys
 import subprocess
@@ -8,6 +7,7 @@ try: from idlelib.tooltip import Hovertip
 except Exception: pass
 import threading
 import webbrowser
+import datetime
 
 class CmdButton(tkinter.Button):
     cmd = ""
@@ -15,7 +15,8 @@ class CmdButton(tkinter.Button):
     thread = None
     cmd_file = ""
     menu = None
-    def __init__(self, cmd, show_status, cmd_file, *args, **kwargs):
+    log_dir = ""
+    def __init__(self, cmd, show_status, cmd_file, log_dir, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.cmd = cmd
         self.show_status = show_status
@@ -26,6 +27,7 @@ class CmdButton(tkinter.Button):
         self.menu.add_command(label ="edit button", command=lambda s=self: webbrowser.open(s.cmd_file))
         self.menu.add_command(label ="copy command", command=lambda s=self: set_clipboard(s.cmd))
         self.bind("<Button-3>", lambda x, s=self: s.show_menu(x))
+        self.log_dir = log_dir
         # m.add_separator()
         # m.add_command(label ="Rename")
     def show_menu(self, event): 
@@ -36,12 +38,17 @@ class CmdButton(tkinter.Button):
 
     def _run_thread(self):
         self.config(state="disabled")
-        if self.show_status: self.config(bg="grey80")
-        if os.name == "nt": ret = subprocess.Popen(self.cmd, creationflags=subprocess.CREATE_NEW_CONSOLE).wait()
-        else: ret = subprocess.Popen(shlex.split(self.cmd)).wait()
-        if self.show_status and ret == 0: self.config(bg="green3", activebackground="green2")
-        elif self.show_status: self.config(bg="red2",activebackground="red1")
-        self.config(state="normal")
+        now  = datetime.datetime.now().strftime('%d_%m_%Y-%H_%M_%S') 
+        log_path = self.log_dir+"_"+now+".log"
+        os.makedirs(os.path.dirname(log_path), exist_ok=True)
+        with open(log_path, "w") as log:
+            if self.show_status: self.config(bg="grey80")
+            if os.name == "nt": ret = subprocess.Popen(self.cmd, stdout=log, stderr=log, stdin=log creationflags=subprocess.CREATE_NEW_CONSOLE).wait()
+            else: ret = subprocess.Popen(self.cmd, shell=True, stdout=log, stderr=log, stdin=log).wait()
+            if self.show_status and ret == 0: self.config(bg="green3", activebackground="green2")
+            elif self.show_status: self.config(bg="red2",activebackground="red1")
+            if ret != 0: webbrowser.open(log_path)
+            self.config(state="normal")
     def on_l_click(self):
         if self.thread == None or not self.thread.is_alive():
             self.thread = threading.Thread(target=lambda x: x._run_thread(), args=[self])
@@ -173,6 +180,7 @@ def build_widgets():
 
 
     def create_tab(tab_name, tab):
+        log_dir = "logs/"+tab_name+"/"
         tab_icon = ""
         tab_icon_subsample = (1,1)
         tab_button = tkinter.Button(tabs)
@@ -189,7 +197,7 @@ def build_widgets():
                 name = section["name"] if "name" in section else sec
                 icon_subsample = section["icon_subsample"] if "icon_subsample" in section else (1,1)
                 image = get_image(icon, icon_subsample)
-                button = CmdButton(cmd, show_status, toml_file, butts, text=name, image=image, compound="left")
+                button = CmdButton(cmd, show_status, toml_file, log_dir+sec, butts, text=name, image=image, compound="left")
                 try: Hovertip(button, ">"+cmd, 500)
                 except Exception: pass
                 tab_butts.append(button)
