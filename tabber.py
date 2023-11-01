@@ -90,6 +90,7 @@ master=tkinter.Tk()
 master.geometry("350x275")
 tab_num = 0
 included = []
+img_map = { "": None }
 
 def build_widgets():
     global included
@@ -130,7 +131,6 @@ def build_widgets():
     title = settings["title"] if "title" in settings else "tabber"
     master.title(title)
     master.configure(borderwidth=5)
-
     photo=tkinter.PhotoImage(file=os.path.dirname(__file__)+'/tabber.png')
     master.wm_iconphoto(False, photo.subsample(4,4))
     photo = photo.subsample(8,8)
@@ -165,7 +165,6 @@ def build_widgets():
 
 
     tab_dict = {}
-    img_map = {"": None } # photo.subsample(2,2)
 
     def get_image(path, subsample=(1,1)):
         if not path in img_map and os.path.exists(path):
