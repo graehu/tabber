@@ -9,6 +9,10 @@ import threading
 import webbrowser
 import datetime
 
+def open_file(in_path):
+    path = os.path.abspath(in_path)
+    webbrowser.open(path)
+
 class CmdButton(tkinter.Button):
     cmd = ""
     show_status = False
@@ -22,12 +26,11 @@ class CmdButton(tkinter.Button):
         self.cmd = cmd
         self.show_status = show_status
         self.cmd_file = cmd_file
-        self.bind("<Button-1>", lambda x, y=self: y.on_l_click())
         self.menu = tkinter.Menu(self, tearoff = 0)
-        self.menu.bind("<Leave>", lambda x, m=self.menu: m.unpost())
-        self.menu.add_command(label ="edit button", command=lambda s=self: webbrowser.open(s.cmd_file))
+        self.configure(command=lambda y=self: y.on_l_click())
+        self.menu.add_command(label ="edit button", command=lambda s=self: open_file(s.cmd_file))
         self.menu.add_command(label ="copy command", command=lambda s=self: set_clipboard(s.cmd))
-        self.menu.add_command(label ="open log", command=lambda s=self: webbrowser.open(s.last_log))
+        self.menu.add_command(label ="open log", command=lambda s=self: open_file(s.last_log))
         self.bind("<Button-3>", lambda x, s=self: s.show_menu(x))
         self.log_fmt = log_dir+"/"+os.path.basename(log_dir)+"_{now}.log"
         if os.path.exists(log_dir+"/"):
@@ -36,28 +39,35 @@ class CmdButton(tkinter.Button):
         # m.add_command(label ="Rename")
     def show_menu(self, event): 
         try: 
-            self.menu.tk_popup(event.x_root, event.y_root) 
+            self.config(state="disabled")
+            self.menu.tk_popup(event.x_root, event.y_root)
         finally: 
             self.menu.grab_release()
+            self.after(1, lambda x=self: x.config(state="normal"))
+            return "break"
+            
 
     def _run_thread(self):
-        self.config(state="disabled")
-        now  = datetime.datetime.now().strftime('%d_%m_%Y-%H_%M_%S') 
-        log_path = self.log_fmt.format(now=now)
-        os.makedirs(os.path.dirname(log_path), exist_ok=True)
-        self.last_log = log_path
-        with open(log_path, "w") as log:
-            if self.show_status: self.config(bg="grey80")
-            if os.name == "nt": ret = subprocess.Popen(self.cmd, stdout=log, stderr=log, stdin=log, creationflags=subprocess.CREATE_NEW_CONSOLE).wait()
-            else: ret = subprocess.Popen(self.cmd, shell=True, stdout=log, stderr=log, stdin=log).wait()
-            if self.show_status and ret == 0: self.config(bg="green3", activebackground="green2")
-            elif self.show_status: self.config(bg="red2",activebackground="red1")
-            if ret != 0: webbrowser.open(log_path)
+        if self.cget("state") != "disabled":
+            self.config(state="disabled")
+            now  = datetime.datetime.now().strftime('%d_%m_%Y-%H_%M_%S') 
+            log_path = self.log_fmt.format(now=now)
+            os.makedirs(os.path.dirname(log_path), exist_ok=True)
+            self.last_log = log_path
+            with open(log_path, "w") as log:
+                if self.show_status: self.config(bg="grey80")
+                if os.name == "nt": ret = subprocess.Popen(self.cmd, stdout=log,stderr=log,stdin=log,creationflags=subprocess.CREATE_NEW_CONSOLE).wait()
+                else: ret = subprocess.Popen(self.cmd, shell=True, stdout=log, stderr=log, stdin=log).wait()
+                if self.show_status and ret == 0: self.config(bg="green3", activebackground="green2")
+                elif self.show_status: self.config(bg="red2",activebackground="red1")
+                if ret != 0: open_file(log_path)
             self.config(state="normal")
+
     def on_l_click(self):
         if self.thread == None or not self.thread.is_alive():
             self.thread = threading.Thread(target=lambda x: x._run_thread(), args=[self])
             self.thread.start()
+        return "break"
 
 class pushd:
     path = ""
@@ -133,7 +143,7 @@ def build_widgets():
         lab = tkinter.Label(master, text=error_message)
         lab.place(relx=0.5, rely=0.5, anchor=tkinter.CENTER)
         if os.path.exists(include):
-            webbrowser.open(include)
+            open_file(include)
             if not include in old_included: old_included.append(include)
 
         master.after(100, lambda x: master.lift())
