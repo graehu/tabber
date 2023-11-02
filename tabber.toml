@@ -10,6 +10,7 @@ command = "echo hi"
 name = "sleep for 1 second"
 command = "sleep 1s"
 show_status = true
+confirm = true
 
 [hello.echo_hello]
 name = "echo hello"

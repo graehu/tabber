@@ -1,4 +1,5 @@
 import tkinter
+import tkinter.messagebox
 import tomllib
 import os
 import sys
@@ -21,7 +22,8 @@ class CmdButton(tkinter.Button):
     menu = None
     log_fmt = ""
     last_log = ""
-    def __init__(self, cmd, show_status, cmd_file, log_dir, *args, **kwargs):
+    confirm = False
+    def __init__(self, cmd, show_status, cmd_file, log_dir, confirm, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.cmd = cmd
         self.show_status = show_status
@@ -35,6 +37,7 @@ class CmdButton(tkinter.Button):
         self.log_fmt = log_dir+"/"+os.path.basename(log_dir)+"_{now}.log"
         if os.path.exists(log_dir+"/"):
             self.last_log = sorted([log_dir+"/"+l for l in os.listdir(log_dir)])[-1]
+        self.confirm = confirm
         # m.add_separator()
         # m.add_command(label ="Rename")
     def show_menu(self, event): 
@@ -48,6 +51,7 @@ class CmdButton(tkinter.Button):
             
 
     def _run_thread(self):
+        if self.confirm and not tkinter.messagebox.askyesno("Confirm", f"Are you sure you want to run '{self.cget('text')}'?"): return
         if self.cget("state") != "disabled":
             self.config(state="disabled")
             now  = datetime.datetime.now().strftime('%d_%m_%Y-%H_%M_%S') 
@@ -210,9 +214,10 @@ def build_widgets():
                 cmd = section["command"] if "command" in section else "no_command"
                 show_status = section["show_status"] if "show_status" in section else False
                 name = section["name"] if "name" in section else sec
+                confirm = section["confirm"] if "confirm" in section else False
                 icon_subsample = section["icon_subsample"] if "icon_subsample" in section else (1,1)
                 image = get_image(icon, icon_subsample)
-                button = CmdButton(cmd, show_status, toml_file, log_dir+sec, butts, text=name, image=image, compound="left")
+                button = CmdButton(cmd, show_status, toml_file, log_dir+sec, confirm, butts, text=name, image=image, compound="left")
                 try: Hovertip(button, ">"+cmd, 500)
                 except Exception: pass
                 tab_butts.append(button)
