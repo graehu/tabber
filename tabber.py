@@ -15,7 +15,8 @@ class CmdButton(tkinter.Button):
     thread = None
     cmd_file = ""
     menu = None
-    log_dir = ""
+    log_fmt = ""
+    last_log = ""
     def __init__(self, cmd, show_status, cmd_file, log_dir, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.cmd = cmd
@@ -26,8 +27,11 @@ class CmdButton(tkinter.Button):
         self.menu.bind("<Leave>", lambda x, m=self.menu: m.unpost())
         self.menu.add_command(label ="edit button", command=lambda s=self: webbrowser.open(s.cmd_file))
         self.menu.add_command(label ="copy command", command=lambda s=self: set_clipboard(s.cmd))
+        self.menu.add_command(label ="open log", command=lambda s=self: webbrowser.open(s.last_log))
         self.bind("<Button-3>", lambda x, s=self: s.show_menu(x))
-        self.log_dir = log_dir
+        self.log_fmt = log_dir+"/"+os.path.basename(log_dir)+"_{now}.log"
+        if os.path.exists(log_dir+"/"):
+            self.last_log = sorted([log_dir+"/"+l for l in os.listdir(log_dir)])[-1]
         # m.add_separator()
         # m.add_command(label ="Rename")
     def show_menu(self, event): 
@@ -39,8 +43,9 @@ class CmdButton(tkinter.Button):
     def _run_thread(self):
         self.config(state="disabled")
         now  = datetime.datetime.now().strftime('%d_%m_%Y-%H_%M_%S') 
-        log_path = self.log_dir+"_"+now+".log"
+        log_path = self.log_fmt.format(now=now)
         os.makedirs(os.path.dirname(log_path), exist_ok=True)
+        self.last_log = log_path
         with open(log_path, "w") as log:
             if self.show_status: self.config(bg="grey80")
             if os.name == "nt": ret = subprocess.Popen(self.cmd, stdout=log, stderr=log, stdin=log, creationflags=subprocess.CREATE_NEW_CONSOLE).wait()
