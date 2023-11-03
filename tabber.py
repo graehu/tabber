@@ -40,26 +40,29 @@ class CmdButton(tkinter.Button):
         self.confirm = confirm
         # m.add_separator()
         # m.add_command(label ="Rename")
-    def show_menu(self, event): 
-        try: 
+    def show_menu(self, event):
+        try:
             self.config(state="disabled")
             self.menu.tk_popup(event.x_root, event.y_root)
-        finally: 
+        finally:
             self.menu.grab_release()
             self.after(1, lambda x=self: x.config(state="normal"))
             return "break"
-            
+
 
     def _run_thread(self):
         if self.confirm and not tkinter.messagebox.askyesno("Confirm", f"Are you sure you want to run '{self.cget('text')}'?"): return
         if self.cget("state") != "disabled":
             self.config(state="disabled")
-            now  = datetime.datetime.now().strftime('%d_%m_%Y-%H_%M_%S') 
+            now  = datetime.datetime.now().strftime('%d_%m_%Y-%H_%M_%S')
             log_path = self.log_fmt.format(now=now)
+            log_path = os.path.abspath(log_path)
+            print(f"{self.cmd} | tee {log_path}")
             os.makedirs(os.path.dirname(log_path), exist_ok=True)
             self.last_log = log_path
             if self.show_status: self.config(bg="grey80")
-            if os.name == "nt": ret = subprocess.Popen(f"{self.cmd} | tee {log_path}", creationflags=subprocess.CREATE_NEW_CONSOLE).wait()
+            
+            if os.name == "nt": ret = subprocess.Popen(f'start cmd.exe @cmd /k "{self.cmd} | tee {log_path} && exit(errorlevel)"', shell=True).wait()
             else: ret = subprocess.Popen(f'gnome-terminal -- bash -c "({self.cmd}) | tee {log_path}" ', shell=True).wait()
             if self.show_status and ret == 0: self.config(bg="green3", activebackground="green2")
             elif self.show_status: self.config(bg="red2",activebackground="red1")
@@ -134,7 +137,7 @@ def build_widgets():
                     included.append(include)
                     inc = tomllib.load(open(include, "rb"))
                     recursive_add_keyval(inc, "origin_toml", include)
-                    with pushd(os.path.dirname(include)):                
+                    with pushd(os.path.dirname(include)):
                         if "includes" in inc: inc["includes"] = [os.path.abspath(p) for p in inc["includes"]]
                         recursive_abspath(inc, "icon")
                     inc_settings.append(inc)
@@ -170,7 +173,7 @@ def build_widgets():
     tabs.config(bg="grey")
     spacer.config(height=2, bg="grey")
 
-    
+
     tabs.pack(side="top", expand=False, fill="both")
     spacer.pack(side="top", expand=False, fill="both")
     butts.pack(side="top", expand=True, fill="both")
