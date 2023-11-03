@@ -35,7 +35,7 @@ class CmdButton(tkinter.Button):
         self.menu.add_command(label ="open log", command=lambda s=self: open_file(s.last_log))
         self.bind("<Button-3>", lambda x, s=self: s.show_menu(x))
         self.log_fmt = log_dir+"/"+os.path.basename(log_dir)+"_{now}.log"
-        if os.path.exists(log_dir+"/"):
+        if os.path.exists(log_dir+"/") and os.listdir(log_dir+"/"):
             self.last_log = sorted([log_dir+"/"+l for l in os.listdir(log_dir)])[-1]
         self.confirm = confirm
         # m.add_separator()
@@ -58,13 +58,12 @@ class CmdButton(tkinter.Button):
             log_path = self.log_fmt.format(now=now)
             os.makedirs(os.path.dirname(log_path), exist_ok=True)
             self.last_log = log_path
-            with open(log_path, "w") as log:
-                if self.show_status: self.config(bg="grey80")
-                if os.name == "nt": ret = subprocess.Popen(self.cmd, stdout=log,stderr=log,stdin=log,creationflags=subprocess.CREATE_NEW_CONSOLE).wait()
-                else: ret = subprocess.Popen(self.cmd, shell=True, stdout=log, stderr=log, stdin=log).wait()
-                if self.show_status and ret == 0: self.config(bg="green3", activebackground="green2")
-                elif self.show_status: self.config(bg="red2",activebackground="red1")
-                if ret != 0: open_file(log_path)
+            if self.show_status: self.config(bg="grey80")
+            if os.name == "nt": ret = subprocess.Popen(f"{self.cmd} | tee {log_path}", creationflags=subprocess.CREATE_NEW_CONSOLE).wait()
+            else: ret = subprocess.Popen(f'gnome-terminal -- bash -c "({self.cmd}) | tee {log_path}" ', shell=True).wait()
+            if self.show_status and ret == 0: self.config(bg="green3", activebackground="green2")
+            elif self.show_status: self.config(bg="red2",activebackground="red1")
+            if ret != 0: open_file(log_path)
             self.config(state="normal")
 
     def on_l_click(self):
