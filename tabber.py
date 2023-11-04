@@ -9,6 +9,9 @@ except Exception: pass
 import threading
 import webbrowser
 import datetime
+import shutil
+
+
 
 def open_file(in_path):
     path = os.path.abspath(in_path)
@@ -60,7 +63,11 @@ class CmdButton(tkinter.Button):
             self.last_log = log_path
             if self.show_status: self.config(bg="grey80")
             if os.name == "nt": ret = subprocess.Popen(f"{self.cmd} | tee {log_path}", creationflags=subprocess.CREATE_NEW_CONSOLE).wait()
-            else: ret = subprocess.Popen(f'gnome-terminal -- bash -c "({self.cmd}) | tee {log_path}" ', shell=True).wait()
+            else:
+                cmd = f"({self.cmd}) | tee {log_path}"
+                if shutil.which("gnome-terminal"): cmd = f'gnome-terminal -- bash -c "{cmd}"'
+                elif shutil.which("xterm"): cmd = f'xterm -e "{cmd}"'
+                ret = subprocess.Popen(cmd, shell=True).wait()
             if self.show_status and ret == 0: self.config(bg="green3", activebackground="green2")
             elif self.show_status: self.config(bg="red2",activebackground="red1")
             if ret != 0: open_file(log_path)
