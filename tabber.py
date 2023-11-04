@@ -10,7 +10,7 @@ except Exception: pass
 import threading
 import webbrowser
 import datetime
-import shutil
+import time
 
 
 
@@ -66,9 +66,24 @@ class CmdButton(tkinter.Button):
             if self.show_status: self.config(bg="grey80")
             with open(log_path, "w") as log:
                 if self.show_status: self.config(bg="grey80")
-                if platform.system() == "Windows": ret = subprocess.Popen(self.cmd, stdout=log,stderr=log,stdin=log,creationflags=subprocess.CREATE_NEW_CONSOLE).wait()
-                elif platform.system() == "Linux": ret = subprocess.Popen(self.cmd, shell=True, stdout=log, stderr=log, stdin=log).wait()
-                else: assert(False)
+                cmd_window = tkinter.Toplevel()
+                cmd_window.title(self.cget("text"))
+                cmd_window.config(width=300, height=200)
+                txt = tkinter.Text(cmd_window)
+                txt.configure(state=tkinter.DISABLED, bg="black", fg="lightgrey")
+                txt.pack(expand=True, fill="both")
+                proc = subprocess.Popen(self.cmd, shell=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+                cmd_window.protocol("WM_DELETE_WINDOW", lambda p=proc: p.terminate())
+                for c in iter(lambda: proc.stdout.read(1), b""):
+                    if c:
+                        txt.configure(state=tkinter.NORMAL)
+                        txt.insert(tkinter.END, c)
+                        txt.configure(state=tkinter.DISABLED)
+                        log.buffer.write(c)
+                    else:
+                        time.sleep(0.1)
+                ret = proc.wait()
+                cmd_window.destroy()
             if self.show_status and ret == 0: self.config(bg="green3", activebackground="green2")
             elif self.show_status: self.config(bg="red2",activebackground="red1")
             if ret != 0: open_file(log_path)

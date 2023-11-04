@@ -1,21 +1,23 @@
 includes = ["include.toml"]
 
-[hi]
-name = "HI!"
+[tab_1]
+name = "Tab 1"
 
-[hi.echo_hi]
-command = "echo hi"
+[tab_1.button]
+command = "echo I\\'m a button; sleep 2"
 
-[hi.sleep]
-name = "sleep for 1 second"
-command = "sleep 1s"
+[tab_1.succeed]
+name = "Succeed"
+command = "echo this will succeed; sleep 2; exit 0"
 show_status = true
+
+[tab_1.fail]
+name = "Fail"
+command = "echo this will fail; sleep 2; exit 1"
+show_status = true
+
+[tab_2.echo_hello]
+name = "Another button"
+command = "echo I\\'m another button; sleep 2"
 confirm = true
 
-[hello.echo_hello]
-name = "echo hello"
-command = "echo hello"
-
-[hello.echo_hi]
-name = "echo hi"
-command = "echo hi"
