@@ -74,13 +74,13 @@ class CmdButton(tkinter.Button):
                 txt.pack(expand=True, fill="both")
                 proc = subprocess.Popen(self.cmd, shell=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
                 cmd_window.protocol("WM_DELETE_WINDOW", lambda p=proc: p.terminate())
-                for line in iter(proc.stdout.readline, ""):
-                    if line:
+                for c in iter(lambda: proc.stdout.read(1), b""):
+                    if c:
                         txt.configure(state=tkinter.NORMAL)
-                        txt.insert(tkinter.END, line)
+                        txt.insert(tkinter.END, c)
                         txt.configure(state=tkinter.DISABLED)
+                        log.buffer.write(c)
                         txt.see(tkinter.END)
-                        log.buffer.write(line)
                     else:
                         time.sleep(0.1)
                 ret = proc.wait()
