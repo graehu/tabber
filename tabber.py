@@ -11,8 +11,16 @@ import threading
 import webbrowser
 import datetime
 import time
+import signal
 
-
+def kill_proc(proc):
+    if platform.system() == 'Windows':
+        subprocess.Popen("TASKKILL /F /PID {pid} /T".format(pid=proc.pid), shell=True)
+    elif platform.system() == 'Linux':
+        os.kill(proc.pid, signal.SIGTERM)
+    else:
+        proc.kill()
+    
 
 def open_file(in_path):
     path = os.path.abspath(in_path)
@@ -64,27 +72,26 @@ class CmdButton(tkinter.Button):
             os.makedirs(os.path.dirname(log_path), exist_ok=True)
             self.last_log = log_path
             if self.show_status: self.config(bg="grey80")
-            with open(log_path, "w") as log:
-                if self.show_status: self.config(bg="grey80")
-                cmd_window = tkinter.Toplevel()
-                cmd_window.title(self.cget("text"))
-                cmd_window.config(width=300, height=200)
-                txt = tkinter.Text(cmd_window)
-                txt.configure(state=tkinter.DISABLED, bg="black", fg="lightgrey")
-                txt.pack(expand=True, fill="both")
-                proc = subprocess.Popen(self.cmd, shell=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
-                cmd_window.protocol("WM_DELETE_WINDOW", lambda p=proc: p.terminate())
-                for c in iter(lambda: proc.stdout.read(1), b""):
-                    if c:
-                        txt.configure(state=tkinter.NORMAL)
-                        txt.insert(tkinter.END, c)
-                        txt.configure(state=tkinter.DISABLED)
-                        log.buffer.write(c)
-                        txt.see(tkinter.END)
-                    else:
-                        time.sleep(0.1)
-                ret = proc.wait()
-                cmd_window.destroy()
+            with open(log_path, "w") as writer:
+                with open(log_path, "r") as reader:
+                    cmd_window = tkinter.Toplevel()
+                    cmd_window.title(self.cget("text"))
+                    cmd_window.config(width=300, height=200)
+                    txt = tkinter.Text(cmd_window)
+                    txt.configure(state=tkinter.DISABLED, bg="black", fg="lightgrey")
+                    txt.pack(expand=True, fill="both")
+                    proc = subprocess.Popen(self.cmd, stdout=writer, stderr=subprocess.STDOUT, shell=True)
+                    cmd_window.protocol("WM_DELETE_WINDOW", lambda p=proc: kill_proc(p))
+                    while proc.poll() == None:
+                        line = reader.readline()
+                        if line:
+                            txt.configure(state=tkinter.NORMAL)
+                            txt.insert(tkinter.END, line)
+                            txt.configure(state=tkinter.DISABLED)
+                            txt.see(tkinter.END)
+                        time.sleep(1/1E6)
+                    ret = proc.wait()
+                    cmd_window.destroy()
             if self.show_status and ret == 0: self.config(bg="green3", activebackground="green2")
             elif self.show_status: self.config(bg="red2",activebackground="red1")
             if ret != 0: open_file(log_path)
