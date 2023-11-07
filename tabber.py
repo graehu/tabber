@@ -50,15 +50,14 @@ class CmdButton(tkinter.Button):
         if os.path.exists(log_dir+"/") and os.listdir(log_dir+"/"):
             self.last_log = sorted([log_dir+"/"+l for l in os.listdir(log_dir)])[-1]
         self.confirm = confirm
-        # m.add_separator()
-        # m.add_command(label ="Rename")
     def show_menu(self, event):
         try:
             self.config(state="disabled")
-            self.menu.tk_popup(event.x_root, event.y_root)
+            self.menu.post(event.x_root, event.y_root)
         finally:
             self.menu.grab_release()
-            self.after(1, lambda x=self: x.config(state="normal"))
+            if self.thread == None or not self.thread.is_alive():
+                self.after(1, lambda x=self: x.config(state="normal"))
             return "break"
 
 
@@ -82,6 +81,8 @@ class CmdButton(tkinter.Button):
                     txt.pack(expand=True, fill="both")
                     proc = subprocess.Popen(self.cmd, stdout=writer, stderr=subprocess.STDOUT, shell=True)
                     cmd_window.protocol("WM_DELETE_WINDOW", lambda p=proc: kill_proc(p))
+                    self.menu.add_separator()
+                    self.menu.add_command(label ="stop process", command=lambda p=proc: kill_proc(p))
                     while proc.poll() == None:
                         line = reader.readline()
                         if line:
@@ -91,6 +92,8 @@ class CmdButton(tkinter.Button):
                             txt.see(tkinter.END)
                         time.sleep(1/1E6)
                     ret = proc.wait()
+                    self.menu.delete("stop process")
+                    self.menu.delete(self.menu.index(tkinter.END))
                     cmd_window.destroy()
             if self.show_status and ret == 0: self.config(bg="green3", activebackground="green2")
             elif self.show_status: self.config(bg="red2",activebackground="red1")
