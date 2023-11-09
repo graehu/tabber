@@ -50,14 +50,24 @@ class CmdButton(tkinter.Button):
         if os.path.exists(log_dir+"/") and os.listdir(log_dir+"/"):
             self.last_log = sorted([log_dir+"/"+l for l in os.listdir(log_dir)])[-1]
         self.confirm = confirm
+        
     def show_menu(self, event):
         try:
             self.config(state="disabled")
             self.menu.post(event.x_root, event.y_root)
+            bindids = []
+            def pop_unpost(self):
+                nonlocal bindids
+                self.menu.unpost()
+                if self.thread == None or not self.thread.is_alive():
+                    self.after(1, lambda x=self: x.config(state="normal"))
+                for b in bindids: master.unbind(*b)
+                return "break"
+            bindids = [["<Button-1>", master.bind("<Button-1>", lambda x, y=self: pop_unpost(y))]]
+            bindids += [["<FocusOut>", master.bind("<FocusOut>", lambda x, y=self: pop_unpost(y))]]
+
         finally:
             self.menu.grab_release()
-            if self.thread == None or not self.thread.is_alive():
-                self.after(1, lambda x=self: x.config(state="normal"))
             return "break"
 
 
