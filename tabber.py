@@ -50,7 +50,7 @@ class CmdButton(tkinter.Button):
         if os.path.exists(log_dir+"/") and os.listdir(log_dir+"/"):
             self.last_log = sorted([log_dir+"/"+l for l in os.listdir(log_dir)])[-1]
         self.confirm = confirm
-        
+
     def show_menu(self, event):
         try:
             self.config(state="disabled")
@@ -249,6 +249,7 @@ def build_widgets():
         tab_button.pack(side="left")
         tab_button.bind("<Button-1>", lambda x: show_tab(x.widget))
         tab_butts = []
+        tab_configs = {}
         for sec in tab:
             section = tab[sec]
             if isinstance(section, dict):
@@ -261,14 +262,29 @@ def build_widgets():
                 icon_subsample = section["icon_subsample"] if "icon_subsample" in section else (1,1)
                 image = get_image(icon, icon_subsample)
                 button = CmdButton(cmd, show_status, toml_file, log_dir+sec, confirm, butts, text=name, image=image, compound="left")
+                configs = {}
+                for k in section:
+                    if k in ["command", "icon", "name", "confirm"]: continue
+                    if k in button.configure().keys(): configs.update({k:section[k]})
+                try:
+                    button.configure(configs)
+                except Exception as e:
+                    open_file(toml_file)
+                    tkinter.messagebox.showerror(f"ERROR '[{tab_name}.{sec}]'", str(e))
                 try: Hovertip(button, ">"+cmd, 500)
                 except Exception: pass
                 tab_butts.append(button)
             elif sec == "name": tab_name = section
             elif sec == "icon": tab_icon = section
             elif sec == "icon_subsample": tab_icon = section
+            elif sec in tab_button.configure().keys(): tab_configs.update({sec:section})
         image = get_image(tab_icon, tab_icon_subsample)
         tab_button.configure(text=tab_name, image=image, compound="left")
+        try:
+            tab_button.configure(tab_configs)
+        except Exception as e:
+            open_file(toml_file)
+            tkinter.messagebox.showerror(f"ERROR '[{tab_name}]'", str(e))
         tab_dict[tab_name] = {"tab": tab_button, "buttons": tab_butts}
 
 
