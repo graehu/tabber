@@ -264,7 +264,7 @@ def build_widgets():
                 button = CmdButton(cmd, show_status, toml_file, log_dir+sec, confirm, butts, text=name, image=image, compound="left")
                 configs = {}
                 for k in section:
-                    if k in ["command", "icon", "name", "confirm"]: continue
+                    if k in ["command", "icon", "name", "image", "confirm"]: continue
                     if k in button.configure().keys(): configs.update({k:section[k]})
                 try:
                     button.configure(configs)
@@ -277,6 +277,7 @@ def build_widgets():
             elif sec == "name": tab_name = section
             elif sec == "icon": tab_icon = section
             elif sec == "icon_subsample": tab_icon = section
+            elif sec == "image": pass
             elif sec in tab_button.configure().keys(): tab_configs.update({sec:section})
         image = get_image(tab_icon, tab_icon_subsample)
         tab_button.configure(text=tab_name, image=image, compound="left")
