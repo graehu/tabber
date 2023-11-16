@@ -45,6 +45,7 @@ class CmdButton(tkinter.Button):
         self.menu.add_command(label ="edit button", command=lambda s=self: open_file(s.cmd_file))
         self.menu.add_command(label ="copy command", command=lambda s=self: set_clipboard(s.cmd))
         self.menu.add_command(label ="open log", command=lambda s=self: open_file(s.last_log))
+        self.menu.add_command(label ="open log folder", command=lambda s=self: open_file(os.path.dirname(s.last_log)))
         self.bind("<Button-3>", lambda x, s=self: s.show_menu(x))
         self.log_fmt = log_dir+"/"+os.path.basename(log_dir)+"_{now}.log"
         if os.path.exists(log_dir+"/") and os.listdir(log_dir+"/"):
@@ -72,6 +73,7 @@ class CmdButton(tkinter.Button):
 
 
     def _run_thread(self):
+        print(threading.enumerate())
         if self.confirm and not tkinter.messagebox.askyesno("Confirm", f"Are you sure you want to run '{self.cget('text')}'?"): return
         if self.cget("state") != "disabled":
             self.config(state="disabled")
@@ -297,7 +299,6 @@ def build_widgets():
         show_tab(tabs.winfo_children()[tab_num])
     else:
         show_tab(tabs.winfo_children()[0])
-    master.bind("<Control-s>", lambda x: build_widgets())
 
 build_widgets()
 mod_times = {}
@@ -311,7 +312,11 @@ def watch_includes():
                 wants_build = True
         else:
             mod_times[inc] = os.path.getmtime(inc)
-    if wants_build: build_widgets()
+    if wants_build:
+        if len(threading.enumerate()) == 1:
+            build_widgets()
+        else:
+            tkinter.messagebox.showerror("Reload Failure", "Command in progress!\n\nSave the config after the command finishes or open a new instance of tabber.")
     master.after(500, watch_includes)
 
 watch_includes()
