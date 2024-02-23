@@ -12,6 +12,7 @@ import webbrowser
 import datetime
 import time
 import signal
+import math
 
 def kill_proc(proc):
     if platform.system() == 'Windows':
@@ -230,8 +231,22 @@ def build_widgets():
         tab_num = tabs.winfo_children().index(current_tab)
         name = widget.cget("text")
         tab_butts = tab_dict[name]["buttons"]
-        for child in butts.winfo_children(): child.pack_forget()
-        for button in tab_butts: button.pack(side="top", expand=True, fill="both")
+
+        num_butts = len(tab_butts)
+        bx = int(math.sqrt(num_butts))
+        by = int((num_butts/bx)+0.5)
+
+        for child in butts.winfo_children():
+            child.pack_forget()
+            if not "cmdbutton" in str(child): child.destroy()
+        for i in range(0, bx):
+            frame = tkinter.Frame(butts)
+            frame.pack(side="left", expand=True, fill="both")
+            for ii in range(0, by):
+                if i*by+ii >= num_butts: break
+                tab_butts[i*by+ii].pack(in_=frame, side="top", expand=True, fill="both")
+                tab_butts[i*by+ii].lift()
+
         master.after(1, lambda widget=widget:widget.configure(relief=tkinter.RIDGE))
 
 
