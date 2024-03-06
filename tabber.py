@@ -202,7 +202,7 @@ def build_widgets():
 
     title = settings["title"] if "title" in settings else "tabber"
     master.title(title)
-    master.configure(borderwidth=5)
+    master.configure(bg="grey", borderwidth=5)
     photo=tkinter.PhotoImage(file=os.path.dirname(__file__)+'/tabber.png')
     master.wm_iconphoto(False, photo.subsample(4,4))
     photo = photo.subsample(8,8)
@@ -211,15 +211,11 @@ def build_widgets():
     # Create Frames
     tabs = tkinter.Frame(master)
     butts = tkinter.Frame(master)
-    spacer = tkinter.Frame(master)
 
     # "Styling"
-    tabs.config(bg="grey")
-    spacer.config(height=2, bg="grey")
-
-
+    tabs.config(bg="grey",borderwidth=5)
+    butts.config(bg="grey", borderwidth=5)
     tabs.pack(side="top", expand=False, fill="both")
-    spacer.pack(side="top", expand=False, fill="both")
     butts.pack(side="top", expand=True, fill="both")
 
     current_tab = None
@@ -263,7 +259,7 @@ def build_widgets():
         tab_icon = ""
         tab_icon_subsample = (1,1)
         tab_button = tkinter.Button(tabs)
-        tab_button.pack(side="left")
+        tab_button.pack(side="left", expand=True, fill="both")
         tab_button.bind("<Button-1>", lambda x: show_tab(x.widget))
         tab_butts = []
         tab_configs = {}
@@ -275,7 +271,7 @@ def build_widgets():
                 cmd = section["command"] if "command" in section else "no_command"
                 show_status = section["show_status"] if "show_status" in section else False
                 name = section["name"] if "name" in section else sec
-                confirm = section["confirm"] if "confirm" in section else False
+                confirm = section["confirm"] if "confirm" in section else True
                 icon_subsample = section["icon_subsample"] if "icon_subsample" in section else (1,1)
                 image = get_image(icon, icon_subsample)
                 button = CmdButton(cmd, show_status, toml_file, log_dir+sec, confirm, butts, text=name, image=image, compound="left")
