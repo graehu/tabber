@@ -28,6 +28,7 @@ def open_file(in_path):
     path = os.path.abspath(in_path)
     webbrowser.open(path)
 
+
 class CmdButton(tkinter.Button):
     cmd = ""
     show_status = False
@@ -47,7 +48,7 @@ class CmdButton(tkinter.Button):
         self.menu.add_command(label ="edit button", command=lambda s=self: open_file(s.cmd_file))
         for path in shlex.split(cmd):
             if os.path.exists(path):
-                self.menu.add_command(label ="edit "+os.path.basename(path), command=lambda s=self: open_file(path))
+                self.menu.add_command(label ="edit "+os.path.basename(path), command=lambda s=self, p=path: open_file(p))
         self.menu.add_command(label ="copy command", command=lambda s=self: set_clipboard(s.cmd))
         self.menu.add_command(label ="open log", command=lambda s=self: open_file(s.last_log))
         self.menu.add_command(label ="open log folder", command=lambda s=self: open_file(os.path.dirname(s.last_log)))
