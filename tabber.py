@@ -47,7 +47,7 @@ class CmdButton(tkinter.Button):
         self.configure(command=lambda y=self: y.on_l_click())
         self.menu.add_command(label ="edit button", command=lambda s=self: open_file(s.cmd_file))
         for path in shlex.split(cmd):
-            if os.path.exists(path):
+            if os.path.exists(path) and os.path.isfile(path):
                 self.menu.add_command(label ="edit "+os.path.basename(path), command=lambda s=self, p=path: open_file(p))
         self.menu.add_command(label ="copy command", command=lambda s=self: set_clipboard(s.cmd))
         self.menu.add_command(label ="open log", command=lambda s=self: open_file(s.last_log))
