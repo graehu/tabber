@@ -5,6 +5,7 @@ import os
 import platform
 import sys
 import subprocess
+import shlex
 try: from idlelib.tooltip import Hovertip
 except Exception: pass
 import threading
@@ -44,6 +45,9 @@ class CmdButton(tkinter.Button):
         self.menu = tkinter.Menu(self, tearoff = 0)
         self.configure(command=lambda y=self: y.on_l_click())
         self.menu.add_command(label ="edit button", command=lambda s=self: open_file(s.cmd_file))
+        for path in shlex.split(cmd):
+            if os.path.exists(path):
+                self.menu.add_command(label ="edit "+os.path.basename(path), command=lambda s=self: open_file(path))
         self.menu.add_command(label ="copy command", command=lambda s=self: set_clipboard(s.cmd))
         self.menu.add_command(label ="open log", command=lambda s=self: open_file(s.last_log))
         self.menu.add_command(label ="open log folder", command=lambda s=self: open_file(os.path.dirname(s.last_log)))
@@ -74,7 +78,6 @@ class CmdButton(tkinter.Button):
 
 
     def _run_thread(self):
-        print(threading.enumerate())
         if self.confirm and not tkinter.messagebox.askyesno("Confirm", f"Are you sure you want to run '{self.cget('text')}'?"): return
         if self.cget("state") != "disabled":
             self.config(state="disabled")
@@ -230,18 +233,21 @@ def build_widgets():
 
         num_butts = len(tab_butts)
         bx = int(math.sqrt(num_butts))
-        by = int((num_butts/bx)+0.5)
+        by = int(round((num_butts/bx)+0.5))
 
         for child in butts.winfo_children():
             child.pack_forget()
             if not "cmdbutton" in str(child): child.destroy()
+        
+        frames = []
         for i in range(0, bx):
             frame = tkinter.Frame(butts)
             frame.pack(side="left", expand=True, fill="both")
-            for ii in range(0, by):
-                if i*by+ii >= num_butts: break
-                tab_butts[i*by+ii].pack(in_=frame, side="top", expand=True, fill="both")
-                tab_butts[i*by+ii].lift()
+            frames.append(frame)
+
+        for i in range(0, num_butts):
+            tab_butts[i].pack(in_=frames[i%bx], side="top", expand=True, fill="both")
+            tab_butts[i].lift()
 
         master.after(1, lambda widget=widget:widget.configure(relief=tkinter.RIDGE))
 
