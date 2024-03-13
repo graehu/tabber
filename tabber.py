@@ -20,7 +20,7 @@ editors = ["code", "subl", "notepad++", "gedit", "notepad"]
 editor = None
 for edit in editors:
     if shutil.which(edit):
-        editor = edit; break
+        editor = shutil.which(edit); break
 
 
 def kill_proc(proc):
