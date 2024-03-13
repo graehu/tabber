@@ -35,7 +35,10 @@ def kill_proc(proc):
 def open_file(in_path):
     path = os.path.abspath(in_path)
     if editor:
-        subprocess.run([editor, path])
+        if platform.system() == 'Windows':
+            subprocess.run([editor, path], creationflags=subprocess.CREATE_NO_WINDOW)
+        else:
+            subprocess.run([editor, path])
     else:
         # Never open a  file without an editor, it may run.
         webbrowser.open(os.path.dirname(path))
