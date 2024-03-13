@@ -43,7 +43,6 @@ def open_file(in_path):
         # Never open a  file without an editor, it may run.
         webbrowser.open(os.path.dirname(path))
 
-
 class CmdButton(tkinter.Button):
     cmd = ""
     show_status = False
@@ -53,6 +52,7 @@ class CmdButton(tkinter.Button):
     log_fmt = ""
     last_log = ""
     confirm = False
+    all_buttons = []
     def __init__(self, cmd, show_status, cmd_file, log_dir, confirm, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.cmd = cmd
@@ -72,11 +72,10 @@ class CmdButton(tkinter.Button):
         if os.path.exists(log_dir+"/") and os.listdir(log_dir+"/"):
             self.last_log = sorted([log_dir+"/"+l for l in os.listdir(log_dir)])[-1]
         self.confirm = confirm
+        CmdButton.all_buttons.append(self)
 
     def show_menu(self, event):
         try:
-            self.config(state="disabled")
-            self.menu.post(event.x_root, event.y_root)
             bindids = []
             def pop_unpost(self):
                 nonlocal bindids
@@ -85,6 +84,13 @@ class CmdButton(tkinter.Button):
                     self.after(1, lambda x=self: x.config(state="normal"))
                 for b in bindids: master.unbind(*b)
                 return "break"
+            
+            for butt in CmdButton.all_buttons:
+                if butt == self: continue
+                pop_unpost(butt)
+            
+            self.config(state="disabled")
+            self.menu.post(event.x_root, event.y_root)
             bindids = [["<Button-1>", master.bind("<Button-1>", lambda x, y=self: pop_unpost(y))]]
             bindids += [["<FocusOut>", master.bind("<FocusOut>", lambda x, y=self: pop_unpost(y))]]
 
@@ -185,6 +191,7 @@ img_map = { "": None }
 
 def build_widgets():
     global included
+    CmdButton.all_buttons.clear()
     for c in master.winfo_children(): c.destroy()
     settings = {"includes": [settings_file]}
     curdir = os.path.dirname(settings_file)
