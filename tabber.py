@@ -185,6 +185,7 @@ settings_file = os.path.abspath(settings_file)
 # Setup Tkinter
 master=tkinter.Tk()
 master.geometry("350x275")
+master.minsize(256, 128+64)
 tab_num = 0
 included = []
 img_map = { "": None }
