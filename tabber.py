@@ -34,7 +34,7 @@ def kill_proc(proc):
 
 def open_file(in_path):
     path = os.path.abspath(in_path)
-    if editor:
+    if os.path.isfile(in_path):
         if platform.system() == 'Windows':
             subprocess.run([editor, path], creationflags=subprocess.CREATE_NO_WINDOW)
         else:
