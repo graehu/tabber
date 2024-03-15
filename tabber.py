@@ -16,6 +16,11 @@ import signal
 import math
 import shutil
 
+if platform.system() == "Windows":
+    import ctypes
+    myappid = 'graehu.tabber.tabber.1' # arbitrary string
+    ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID(myappid)
+
 editors = ["code", "subl", "notepad++", "gedit", "notepad"]
 editor = None
 for edit in editors:
@@ -91,7 +96,8 @@ class CmdButton(tkinter.Button):
             
             self.config(state="disabled")
             self.menu.post(event.x_root, event.y_root)
-            bindids = [["<Button-1>", master.bind("<Button-1>", lambda x, y=self: pop_unpost(y))]]
+            bindids = [["<Escape>", master.bind("<Escape>", lambda x, y=self: pop_unpost(y))]]
+            bindids += [["<Button-1>", master.bind("<Button-1>", lambda x, y=self: pop_unpost(y))]]
             bindids += [["<FocusOut>", master.bind("<FocusOut>", lambda x, y=self: pop_unpost(y))]]
 
         finally:
