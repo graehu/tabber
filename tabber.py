@@ -299,15 +299,17 @@ def build_widgets():
         tab_button.bind("<Button-1>", lambda x: show_tab(x.widget))
         tab_butts = []
         tab_configs = {}
+        # TODO: all of this is going to get very messy, might want a better way to handle these.
+        defaults = {}
         for sec in tab:
             section = tab[sec]
             if isinstance(section, dict):
-                icon = section["icon"] if "icon" in section else ""
+                icon = section["icon"] if "icon" in section else (defaults["icon"] if "icon" in defaults else "")
                 toml_file = section["origin_toml"] if "origin_toml" in section else settings_file
                 cmd = section["command"] if "command" in section else "no_command"
-                show_status = section["show_status"] if "show_status" in section else False
+                show_status = section["show_status"] if "show_status" in section else (defaults["show_status"] if "show_status" in defaults else False)
                 name = section["name"] if "name" in section else sec
-                confirm = section["confirm"] if "confirm" in section else True
+                confirm = section["confirm"] if "confirm" in section else (defaults["confirm"] if "confirm" in defaults else True) 
                 icon_subsample = section["icon_subsample"] if "icon_subsample" in section else (1,1)
                 image = get_image(icon, icon_subsample)
                 button = CmdButton(cmd, show_status, toml_file, log_dir+sec, confirm, butts, text=name, image=image, compound="left")
@@ -323,6 +325,7 @@ def build_widgets():
                 try: Hovertip(button, ">"+cmd, 500)
                 except Exception: pass
                 tab_butts.append(button)
+            elif sec.startswith("buttons_"): defaults[sec.replace("buttons_", "")] = section
             elif sec == "name": tab_name = section
             elif sec == "icon": tab_icon = section
             elif sec == "icon_subsample": tab_icon = section
