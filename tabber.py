@@ -48,8 +48,17 @@ def open_file(in_path):
         # Never open a  file without an editor, it may run.
         webbrowser.open(os.path.dirname(path))
 
+
+class TabButton(tkinter.Button):
+    keyname = ""
+    def __init__(self, keyname, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.keyname = keyname
+
+
 class CmdButton(tkinter.Button):
     cmd = ""
+    keyname = ""
     show_status = False
     thread = None
     cmd_file = ""
@@ -58,8 +67,9 @@ class CmdButton(tkinter.Button):
     last_log = ""
     confirm = False
     all_buttons = []
-    def __init__(self, cmd, show_status, cmd_file, log_dir, confirm, *args, **kwargs):
+    def __init__(self, keyname, cmd, show_status, cmd_file, log_dir, confirm, *args, **kwargs):
         super().__init__(*args, **kwargs)
+        self.keyname = keyname
         self.cmd = cmd
         self.show_status = show_status
         self.cmd_file = cmd_file
@@ -143,6 +153,17 @@ class CmdButton(tkinter.Button):
             elif self.show_status: self.config(bg="red2",activebackground="red1")
             if ret != 0: open_file(log_path)
             self.config(state="normal")
+    
+
+    def run(self):
+        if self.thread == None or not self.thread.is_alive():
+            self.thread = threading.Thread(target=lambda x: x._run_thread(), args=[self])
+            confirm = self.confirm
+            self.confirm = False
+            self.thread.start()
+            self.thread.join()
+            self.confirm = confirm
+
 
     def on_l_click(self):
         if self.thread == None or not self.thread.is_alive():
@@ -258,7 +279,7 @@ def build_widgets():
         if current_tab: current_tab.configure(relief=tkinter.RAISED)
         current_tab = widget
         tab_num = tabs.winfo_children().index(current_tab)
-        name = widget.cget("text")
+        name = widget.keyname
         tab_butts = tab_dict[name]["buttons"]
 
         num_butts = len(tab_butts)
@@ -292,9 +313,10 @@ def build_widgets():
 
     def create_tab(tab_name, tab):
         log_dir = "logs/"+tab_name+"/"
+        keyname = tab_name
         tab_icon = ""
         tab_icon_subsample = (1,1)
-        tab_button = tkinter.Button(tabs)
+        tab_button = TabButton(keyname, tabs)
         tab_button.pack(side="left", expand=True, fill="both")
         tab_button.bind("<Button-1>", lambda x: show_tab(x.widget))
         tab_butts = []
@@ -312,7 +334,7 @@ def build_widgets():
                 confirm = section["confirm"] if "confirm" in section else (defaults["confirm"] if "confirm" in defaults else True) 
                 icon_subsample = section["icon_subsample"] if "icon_subsample" in section else (1,1)
                 image = get_image(icon, icon_subsample)
-                button = CmdButton(cmd, show_status, toml_file, log_dir+sec, confirm, butts, text=name, image=image, compound="left")
+                button = CmdButton(sec, cmd, show_status, toml_file, log_dir+sec, confirm, butts, text=name, image=image, compound="left")
                 configs = {}
                 for k in section:
                     if k in ["command", "icon", "name", "image", "confirm"]: continue
@@ -337,8 +359,8 @@ def build_widgets():
             tab_button.configure(tab_configs)
         except Exception as e:
             open_file(toml_file)
-            tkinter.messagebox.showerror(f"ERROR '[{tab_name}]'", str(e))
-        tab_dict[tab_name] = {"tab": tab_button, "buttons": tab_butts}
+            tkinter.messagebox.showerror(f"ERROR '[{keyname}]'", str(e))
+        tab_dict[keyname] = {"tab": tab_button, "buttons": tab_butts}
 
 
     for tab in settings:
@@ -349,8 +371,28 @@ def build_widgets():
         show_tab(tabs.winfo_children()[tab_num])
     else:
         show_tab(tabs.winfo_children()[0])
+    
+    return tab_dict
 
-build_widgets()
+tab_dict = build_widgets()
+def run_buttons(in_tabs):
+    runners = []
+    for arg in sys.argv:
+        if arg.startswith("-run="):
+            arg = arg.replace("-run=", "", 1)
+            runners.extend([a.split(".") for a in arg.split(",")])
+    
+    for t, b in runners:
+        if t in in_tabs:
+            for but in in_tabs[t]["buttons"]:
+                if but.keyname == b:
+                    print(f"running {t}.{b}")
+                    but.run()
+
+
+lazy_thread = threading.Thread(target=run_buttons, args=[tab_dict])
+lazy_thread.start()
+
 mod_times = {}
 def watch_includes():
     global included
