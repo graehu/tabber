@@ -388,7 +388,7 @@ def run_buttons(in_tabs):
     
     for t, b in runners:
         if t in in_tabs:
-            but = next([tb for tb in in_tabs[t]["buttons"] if tb.keyname == b], None)
+            but = next(iter([tb for tb in in_tabs[t]["buttons"] if tb.keyname == b]), None)
             if but: buttons.append(but)
             else: tkinter.messagebox.showerror("Run Failure", f"{t}.{b} is not a button in tabber! Run cancelled."); return
         else: tkinter.messagebox.showerror("Run Failure", f"{t} is not a tab in tabber! Run cancelled."); return
