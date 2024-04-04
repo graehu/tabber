@@ -65,6 +65,7 @@ class CmdButton(tkinter.Button):
     menu = None
     log_fmt = ""
     last_log = ""
+    last_ret = 0
     confirm = False
     all_buttons = []
     def __init__(self, keyname, cmd, show_status, cmd_file, log_dir, confirm, *args, **kwargs):
@@ -151,6 +152,7 @@ class CmdButton(tkinter.Button):
                     cmd_window.destroy()
             if self.show_status and ret == 0: self.config(bg="green3", activebackground="green2")
             elif self.show_status: self.config(bg="red2",activebackground="red1")
+            self.last_ret = ret
             if ret != 0: open_file(log_path)
             self.config(state="normal")
     
@@ -163,6 +165,8 @@ class CmdButton(tkinter.Button):
             self.thread.start()
             self.thread.join()
             self.confirm = confirm
+            return self.last_ret
+        return -1
 
 
     def on_l_click(self):
@@ -374,9 +378,9 @@ def build_widgets():
     
     return tab_dict
 
-tab_dict = build_widgets()
 def run_buttons(in_tabs):
     runners = []
+    buttons = []
     for arg in sys.argv:
         if arg.startswith("-run="):
             arg = arg.replace("-run=", "", 1)
@@ -384,14 +388,19 @@ def run_buttons(in_tabs):
     
     for t, b in runners:
         if t in in_tabs:
-            for but in in_tabs[t]["buttons"]:
-                if but.keyname == b:
-                    print(f"running {t}.{b}")
-                    but.run()
+            but = next([tb for tb in in_tabs[t]["buttons"] if tb.keyname == b], None)
+            if but: buttons.append(but)
+            else: tkinter.messagebox.showerror("Run Failure", f"{t}.{b} is not a button in tabber! Run cancelled."); return
+        else: tkinter.messagebox.showerror("Run Failure", f"{t} is not a tab in tabber! Run cancelled."); return
+
+    for button in buttons: 
+        print(f"running {button.keyname}")
+        if button.run() != 0: tkinter.messagebox.showerror("Run Failure", f"{button.keyname} returned non zero! Run cancelled."); return
 
 
-lazy_thread = threading.Thread(target=run_buttons, args=[tab_dict])
-lazy_thread.start()
+tab_dict = build_widgets()
+run_thread = threading.Thread(target=run_buttons, args=[tab_dict])
+run_thread.start()
 
 mod_times = {}
 def watch_includes():
