@@ -258,7 +258,7 @@ def build_widgets():
         included = old_included
         return
 
-    title = settings["title"] if "title" in settings else "tabber"
+    title = settings["title"] if "title" in settings else "tabber - "+settings_file
     master.title(title)
     master.configure(bg="grey", borderwidth=5)
     photo=tkinter.PhotoImage(file=os.path.dirname(__file__)+'/tabber.png')
