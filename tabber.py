@@ -129,11 +129,12 @@ class CmdButton(tkinter.Button):
             with open(log_path, "w") as writer:
                 with open(log_path, "r") as reader:
                     cmd_window = tkinter.Toplevel()
-                    cmd_window.title(self.cget("text"))
+                    cmd_window.title(self.cget("text")+" > "+self.cmd)
                     cmd_window.config(width=300, height=200)
                     txt = tkinter.Text(cmd_window)
                     txt.configure(state=tkinter.DISABLED, bg="black", fg="lightgrey")
                     txt.pack(expand=True, fill="both")
+                    start_time = time.time()
                     proc = subprocess.Popen(self.cmd, stdout=writer, stderr=subprocess.STDOUT, shell=True)
                     cmd_window.protocol("WM_DELETE_WINDOW", lambda p=proc: kill_proc(p))
                     self.menu.add_separator()
@@ -150,6 +151,11 @@ class CmdButton(tkinter.Button):
                     self.menu.delete("stop process")
                     self.menu.delete(self.menu.index(tkinter.END))
                     cmd_window.destroy()
+                print("\n",file=writer)
+                print("[tabber]", file=writer)
+                print("cmd    : "+self.cmd, file=writer)
+                print("time   : "+str(datetime.timedelta(seconds=time.time()-start_time)), file=writer)
+                print("success: "+str(bool(ret==0)) + f" ({ret})", file=writer)
             if self.show_status and ret == 0: self.config(bg="green3", activebackground="green2")
             elif self.show_status: self.config(bg="red2",activebackground="red1")
             self.last_ret = ret
