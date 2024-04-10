@@ -58,6 +58,7 @@ class TabButton(tkinter.Button):
 
 class CmdButton(tkinter.Button):
     cmd = ""
+    tab = None
     keyname = ""
     show_status = False
     thread = None
@@ -68,8 +69,9 @@ class CmdButton(tkinter.Button):
     last_ret = 0
     confirm = False
     all_buttons = []
-    def __init__(self, keyname, cmd, show_status, cmd_file, log_dir, confirm, *args, **kwargs):
+    def __init__(self, tab, keyname, cmd, show_status, cmd_file, log_dir, confirm, *args, **kwargs):
         super().__init__(*args, **kwargs)
+        self.tab = tab
         self.keyname = keyname
         self.cmd = cmd
         self.show_status = show_status
@@ -226,8 +228,10 @@ master.minsize(256, 128+64)
 tab_num = 0
 included = []
 img_map = { "": None }
+g_show_tab = None # TODO: this is a bit of a hack, too much stuff happens inside of build_widgets, fix later.
 
 def build_widgets():
+    global g_show_tab
     global included
     CmdButton.all_buttons.clear()
     for c in master.winfo_children(): c.destroy()
@@ -312,7 +316,7 @@ def build_widgets():
 
         master.after(1, lambda widget=widget:widget.configure(relief=tkinter.RIDGE))
 
-
+    g_show_tab = show_tab
     tab_dict = {}
 
     def get_image(path, subsample=(1,1)):
@@ -344,7 +348,7 @@ def build_widgets():
                 confirm = section["confirm"] if "confirm" in section else (defaults["confirm"] if "confirm" in defaults else True) 
                 icon_subsample = section["icon_subsample"] if "icon_subsample" in section else (1,1)
                 image = get_image(icon, icon_subsample)
-                button = CmdButton(sec, cmd, show_status, toml_file, log_dir+sec, confirm, butts, text=name, image=image, compound="left")
+                button = CmdButton(tab_button, sec, cmd, show_status, toml_file, log_dir+sec, confirm, butts, text=name, image=image, compound="left")
                 configs = {}
                 for k in section:
                     if k in ["command", "icon", "name", "image", "confirm"]: continue
@@ -401,6 +405,7 @@ def run_buttons(in_tabs):
 
     for button in buttons: 
         print(f"running {button.keyname}")
+        g_show_tab(button.tab)
         if button.run() != 0: tkinter.messagebox.showerror("Run Failure", f"{button.keyname} returned non zero! Run cancelled."); return
 
 
