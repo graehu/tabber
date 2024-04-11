@@ -51,6 +51,7 @@ def open_file(in_path):
 
 class TabButton(tkinter.Button):
     keyname = ""
+    rows = 0
     def __init__(self, keyname, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.keyname = keyname
@@ -297,8 +298,8 @@ def build_widgets():
         tab_butts = tab_dict[name]["buttons"]
 
         num_butts = len(tab_butts)
-        bx = int(math.sqrt(num_butts))
-        by = int(round((num_butts/bx)+0.5))
+        bx = current_tab.rows
+        if not bx: bx = int(math.sqrt(num_butts))
 
         for child in butts.winfo_children():
             child.pack_forget()
@@ -366,6 +367,7 @@ def build_widgets():
             elif sec == "icon": tab_icon = section
             elif sec == "icon_subsample": tab_icon = section
             elif sec == "image": pass
+            elif sec == "rows": tab_button.rows = section if isinstance(section, int) else 0
             elif sec in tab_button.configure().keys(): tab_configs.update({sec:section})
         image = get_image(tab_icon, tab_icon_subsample)
         tab_button.configure(text=tab_name, image=image, compound="left")
