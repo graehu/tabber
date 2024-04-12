@@ -393,22 +393,29 @@ def build_widgets():
 def run_buttons(in_tabs):
     runners = []
     buttons = []
-    for arg in sys.argv:
-        if arg.startswith("-run="):
-            arg = arg.replace("-run=", "", 1)
-            runners.extend([a.split(".") for a in arg.split(",")])
-    
-    for t, b in runners:
-        if t in in_tabs:
-            but = next(iter([tb for tb in in_tabs[t]["buttons"] if tb.keyname == b]), None)
-            if but: buttons.append(but)
-            else: tkinter.messagebox.showerror("Run Failure", f"{t}.{b} is not a button in tabber! Run cancelled."); return
-        else: tkinter.messagebox.showerror("Run Failure", f"{t} is not a tab in tabber! Run cancelled."); return
+    try:
+        for arg in sys.argv:
+            if arg.startswith("-run="):
+                arg = arg.replace("-run=", "", 1)
+                arg = [a.split(".") for a in arg.split(",")]
+                if len(arg) != 2: tkinter.messagebox.showerror("Run Failure", f"{''.join(arg)} is not a button in tabber! Run cancelled."); return
+                runners.extend(arg)
 
-    for button in buttons: 
-        print(f"running {button.keyname}")
-        g_show_tab(button.tab)
-        if button.run() != 0: tkinter.messagebox.showerror("Run Failure", f"{button.keyname} returned non zero! Run cancelled."); return
+        
+        for t, b in runners:
+            if t in in_tabs:
+                but = next(iter([tb for tb in in_tabs[t]["buttons"] if tb.keyname == b]), None)
+                if but: buttons.append(but)
+                else: tkinter.messagebox.showerror("Run Failure", f"{t}.{b} is not a button in tabber! Run cancelled."); return
+            else: tkinter.messagebox.showerror("Run Failure", f"{t} is not a tab in tabber! Run cancelled."); return
+
+        for button in buttons: 
+            print(f"running {button.keyname}")
+            g_show_tab(button.tab)
+            if button.run() != 0: tkinter.messagebox.showerror("Run Failure", f"{button.keyname} returned non zero! Run cancelled."); return
+    except Exception as e:
+        argv = " ".join(sys.argv[1:])
+        tkinter.messagebox.showerror("Run Failure", f"Uncaught Exception: \n\n{argv}\n\n{str(e)}")
 
 
 tab_dict = build_widgets()
