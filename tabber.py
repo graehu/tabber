@@ -399,7 +399,7 @@ def run_buttons(in_tabs):
                 arg = arg.replace("-run=", "", 1)
                 arg = [a.split(".") for a in arg.split(",")]
                 for a in arg:
-                    if len(a) != 2: tkinter.messagebox.showerror("Run Failure", f"{'.'.join(a)} is not a button in tabber! Run cancelled."); return
+                    if len(a) != 2: tkinter.messagebox.showerror("Run Failure", f"{'.'.join(a)} is not a button in tabber!\n\nRun cancelled."); return
                 
                 runners.extend(arg)
 
@@ -408,16 +408,16 @@ def run_buttons(in_tabs):
             if t in in_tabs:
                 but = next(iter([tb for tb in in_tabs[t]["buttons"] if tb.keyname == b]), None)
                 if but: buttons.append(but)
-                else: tkinter.messagebox.showerror("Run Failure", f"{t}.{b} is not a button in tabber! Run cancelled."); return
-            else: tkinter.messagebox.showerror("Run Failure", f"{t} is not a tab in tabber! Run cancelled."); return
+                else: tkinter.messagebox.showerror("Run Failure", f"{t}.{b} is not a button in tabber!\n\nRun cancelled."); return
+            else: tkinter.messagebox.showerror("Run Failure", f"{t} is not a tab in tabber!\n\nRun cancelled."); return
 
         for button in buttons: 
             print(f"running {button.keyname}")
             g_show_tab(button.tab)
-            if button.run() != 0: tkinter.messagebox.showerror("Run Failure", f"{button.keyname} returned non zero! Run cancelled."); return
+            if button.run() != 0: tkinter.messagebox.showerror("Run Failure", f"{button.keyname} returned non zero!\n\nRun cancelled."); return
     except Exception as e:
         argv = " ".join(sys.argv[1:])
-        tkinter.messagebox.showerror("Run Failure", f"Uncaught Exception: \n\n{argv}\n\n{str(e)}")
+        tkinter.messagebox.showerror("Run Failure", f"Uncaught Exception: \n\n{argv}\n\n{str(e)}\n\nRun cancelled.")
 
 
 tab_dict = build_widgets()
