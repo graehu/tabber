@@ -398,7 +398,9 @@ def run_buttons(in_tabs):
             if arg.startswith("-run="):
                 arg = arg.replace("-run=", "", 1)
                 arg = [a.split(".") for a in arg.split(",")]
-                if len(arg) != 2: tkinter.messagebox.showerror("Run Failure", f"{''.join(arg)} is not a button in tabber! Run cancelled."); return
+                for a in arg:
+                    if len(a) != 2: tkinter.messagebox.showerror("Run Failure", f"{''.join(a)} is not a button in tabber! Run cancelled."); return
+                
                 runners.extend(arg)
 
         
