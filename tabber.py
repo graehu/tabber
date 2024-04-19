@@ -314,6 +314,13 @@ def build_widgets():
         for i in range(0, num_butts):
             tab_butts[i].pack(in_=frames[i%bx], side="top", expand=True, fill="both")
             tab_butts[i].lift()
+        
+        inv_remainder =(num_butts*bx-(num_butts%bx))%bx
+        remainder =  num_butts%bx
+        for i in range(0, inv_remainder):
+            spacer = tkinter.Button(butts)
+            spacer.pack(in_=frames[(i+remainder)%bx], side="top", expand=True, fill="both")
+            spacer.config(state="disabled")
 
         master.after(1, lambda widget=widget:widget.configure(relief=tkinter.RIDGE))
 
