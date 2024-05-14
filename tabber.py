@@ -45,8 +45,9 @@ def open_file(in_path):
         else:
             subprocess.run([editor, path])
     else:
-        # Never open a  file without an editor, it may run.
-        webbrowser.open(os.path.dirname(path))
+        if os.path.isdir(path): webbrowser.open(path)
+        # Never open a file without an editor, it may run.    
+        else: webbrowser.open(os.path.dirname(path))
 
 
 class TabButton(tkinter.Button):
@@ -85,7 +86,7 @@ class CmdButton(tkinter.Button):
                 self.menu.add_command(label ="edit "+os.path.basename(path), command=lambda s=self, p=path: open_file(p))
         self.menu.add_command(label ="copy command", command=lambda s=self: set_clipboard(s.cmd))
         self.menu.add_command(label ="open log", command=lambda s=self: open_file(s.last_log))
-        self.menu.add_command(label ="open log folder", command=lambda s=self: open_file(os.path.dirname(s.last_log)))
+        self.menu.add_command(label ="open log folder", command=lambda s=self: open_file(log_dir))
         self.bind("<Button-3>", lambda x, s=self: s.show_menu(x))
         self.log_fmt = log_dir+"/"+os.path.basename(log_dir)+"_{now}.log"
         if os.path.exists(log_dir+"/") and os.listdir(log_dir+"/"):
