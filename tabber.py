@@ -60,6 +60,7 @@ class TabButton(tkinter.Button):
 
 class CmdButton(tkinter.Button):
     cmd = ""
+    text = ""
     tab = None
     keyname = ""
     show_status = False
@@ -73,6 +74,7 @@ class CmdButton(tkinter.Button):
     all_buttons = []
     def __init__(self, tab, keyname, cmd, show_status, cmd_file, log_dir, confirm, *args, **kwargs):
         super().__init__(*args, **kwargs)
+        self.text = self.cget("text")
         self.tab = tab
         self.keyname = keyname
         self.cmd = cmd
@@ -82,7 +84,7 @@ class CmdButton(tkinter.Button):
         # edit_menu = tkinter.Menu(self.menu, tearoff = 0)
 
         self.configure(command=lambda y=self: y.on_l_click())
-        self.menu.add_command(label ="edit button", command=lambda s=self: open_file(s.cmd_file))
+        self.menu.add_command(label="edit button", command=lambda s=self: open_file(s.cmd_file))
         # self.menu.add_cascade(label="files", menu=edit_menu)
 
         for path in shlex.split(cmd):
@@ -143,7 +145,7 @@ class CmdButton(tkinter.Button):
             with open(log_path, "w") as writer:
                 with open(log_path, "r") as reader:
                     cmd_window = tkinter.Toplevel()
-                    cmd_window.title(self.cget("text")+" > "+self.cmd)
+                    cmd_window.title(self.text+" > "+self.cmd)
                     cmd_window.config(width=300, height=200)
                     txt = tkinter.Text(cmd_window)
                     txt.configure(state=tkinter.DISABLED, bg="black", fg="lightgrey")
@@ -160,6 +162,7 @@ class CmdButton(tkinter.Button):
                             txt.insert(tkinter.END, line)
                             txt.configure(state=tkinter.DISABLED)
                             txt.see(tkinter.END)
+                        if self.show_status: self.config(text=self.text+"\n"+str(datetime.timedelta(seconds=int(time.time()-start_time))))
                         time.sleep(1/1E6)
                     ret = proc.wait()
                     self.menu.delete("stop process")
@@ -170,6 +173,7 @@ class CmdButton(tkinter.Button):
                 print("cmd    : "+self.cmd, file=writer)
                 print("time   : "+str(datetime.timedelta(seconds=time.time()-start_time)), file=writer)
                 print("success: "+str(bool(ret==0)) + f" ({ret})", file=writer)
+            
             if self.show_status and ret == 0: self.config(bg="green3", activebackground="green2")
             elif self.show_status: self.config(bg="red2",activebackground="red1")
             self.last_ret = ret
