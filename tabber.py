@@ -37,13 +37,18 @@ def kill_proc(proc):
         proc.kill()
     
 
-def open_file(in_path):
+def open_file(in_path, line=0):
     path = os.path.abspath(in_path)
     if os.path.isfile(in_path):
         if platform.system() == 'Windows':
-            subprocess.run([editor, path], creationflags=subprocess.CREATE_NO_WINDOW)
+            if "code" in editor:
+                subprocess.run([editor, "--goto", path+f":{line}:0"], creationflags=subprocess.CREATE_NO_WINDOW)
+            else:
+                subprocess.run([editor, path], creationflags=subprocess.CREATE_NO_WINDOW)
         else:
-            subprocess.run([editor, path])
+            if "/code" in editor:
+                subprocess.run([editor, "--goto", path+f":{line}:0"])
+            else: subprocess.run([editor, path])
     else:
         if os.path.isdir(path): webbrowser.open(path)
         # Never open a file without an editor, it may run.    
@@ -66,13 +71,14 @@ class CmdButton(tkinter.Button):
     show_status = False
     thread = None
     cmd_file = ""
+    cmd_line = 0
     menu = None
     log_fmt = ""
     last_log = ""
     last_ret = 0
     confirm = False
     all_buttons = []
-    def __init__(self, tab, keyname, cmd, show_status, cmd_file, log_dir, confirm, *args, **kwargs):
+    def __init__(self, tab, keyname, cmd, show_status, cmd_file, cmd_line, log_dir, confirm, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.text = self.cget("text")
         self.tab = tab
@@ -80,11 +86,12 @@ class CmdButton(tkinter.Button):
         self.cmd = cmd
         self.show_status = show_status
         self.cmd_file = cmd_file
+        self.cmd_line = cmd_line
         self.menu = tkinter.Menu(self, tearoff = 0)
         # edit_menu = tkinter.Menu(self.menu, tearoff = 0)
 
         self.configure(command=lambda y=self: y.on_l_click())
-        self.menu.add_command(label="edit button", command=lambda s=self: open_file(s.cmd_file))
+        self.menu.add_command(label="edit button", command=lambda s=self: open_file(s.cmd_file, s.cmd_line))
         # self.menu.add_cascade(label="files", menu=edit_menu)
 
         for path in shlex.split(cmd):
@@ -263,8 +270,25 @@ def build_widgets():
                 include = os.path.abspath(include)
                 if not include in included:
                     included.append(include)
+                    print("loading "+include)
                     inc = tomllib.load(open(include, "rb"))
                     recursive_add_keyval(inc, "origin_toml", include)
+                    
+                    lines = open(include, "r").readlines()
+                    lines = zip(lines, range(1, len(lines)))
+                    for k1 in inc:
+                        if isinstance(inc[k1], dict):
+                            for k2 in inc[k1]:
+                                if isinstance(inc[k1][k2], dict):
+                                    tab_name = f"[{k1}.{k2}]"
+                                    # print("finding: "+tab_name)
+                                    for l,n in lines:
+                                        if tab_name in l:
+                                            inc[k1][k2]["line"] = n
+                                            break
+                                    # if "line" in inc[k1][k2]:
+                                    #     print(k1+"."+k2+" "+str(inc[k1][k2]["line"]))
+
                     with pushd(os.path.dirname(include)):
                         if "includes" in inc: inc["includes"] = [os.path.abspath(p) for p in inc["includes"]]
                         recursive_abspath(inc, "icon")
@@ -364,6 +388,7 @@ def build_widgets():
             section = tab[sec]
             if isinstance(section, dict):
                 icon = section["icon"] if "icon" in section else (defaults["icon"] if "icon" in defaults else "")
+                cmd_line = section["line"] if "line" in section else 0
                 toml_file = section["origin_toml"] if "origin_toml" in section else settings_file
                 cmd = section["command"] if "command" in section else "no_command"
                 show_status = section["show_status"] if "show_status" in section else (defaults["show_status"] if "show_status" in defaults else False)
@@ -371,7 +396,7 @@ def build_widgets():
                 confirm = section["confirm"] if "confirm" in section else (defaults["confirm"] if "confirm" in defaults else True) 
                 icon_subsample = section["icon_subsample"] if "icon_subsample" in section else (1,1)
                 image = get_image(icon, icon_subsample)
-                button = CmdButton(tab_button, sec, cmd, show_status, toml_file, log_dir+sec, confirm, butts, text=name, image=image, compound="left")
+                button = CmdButton(tab_button, sec, cmd, show_status, toml_file, cmd_line, log_dir+sec, confirm, butts, text=name, image=image, compound="left")
                 configs = {}
                 for k in section:
                     if k in ["command", "icon", "name", "image", "confirm"]: continue
