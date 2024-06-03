@@ -274,7 +274,7 @@ def build_widgets():
                     inc = tomllib.load(open(include, "rb"))
                     recursive_add_keyval(inc, "origin_toml", include)
                     
-                    lines = open(include, "r").readlines()
+                    lines = open(include, "r", encoding="utf-8").readlines()
                     lines = zip(lines, range(1, len(lines)))
                     for k1 in inc:
                         if isinstance(inc[k1], dict):
