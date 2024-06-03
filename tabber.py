@@ -98,10 +98,12 @@ class CmdButton(tkinter.Button):
             if os.path.exists(path) and os.path.isfile(path):
                 self.menu.add_command(label ="edit "+os.path.basename(path), command=lambda s=self, p=path: open_file(p))
             elif os.path.exists(path) and os.path.isdir(path):
-                for file in os.listdir(path):
-                    if file in cmd:
-                        path = "/".join((path,file))
-                        self.menu.add_command(label ="edit "+file, command=lambda s=self, p=path: open_file(p))
+                try:
+                    for file in os.listdir(path):
+                        if file in cmd:
+                            path = "/".join((path,file))
+                            self.menu.add_command(label ="edit "+file, command=lambda s=self, p=path: open_file(p))
+                except Exception: pass
         
         self.menu.add_command(label ="copy command", command=lambda s=self: set_clipboard(s.cmd))
         self.menu.add_command(label ="open log", command=lambda s=self: open_file(s.last_log))
