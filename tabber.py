@@ -162,15 +162,25 @@ class CmdButton(tkinter.Button):
                     cmd_window.protocol("WM_DELETE_WINDOW", lambda p=proc: kill_proc(p))
                     self.menu.add_separator()
                     self.menu.add_command(label ="stop process", command=lambda p=proc: kill_proc(p))
+                    
+                    # Run loop
+                    current_text = self.text
                     while proc.poll() == None:
-                        line = reader.readline()
+                        
+                        time_text = self.text+"\n"+str(datetime.timedelta(seconds=int(time.time()-start_time)))
+                        if self.show_status and current_text != time_text:
+                            current_text = time_text
+                            self.config(text=current_text)
+                        
+                        line = reader.readline(1024*4) # this can hang if we read too many chars.
                         if line:
                             txt.configure(state=tkinter.NORMAL)
                             txt.insert(tkinter.END, line)
                             txt.configure(state=tkinter.DISABLED)
                             txt.see(tkinter.END)
-                        if self.show_status: self.config(text=self.text+"\n"+str(datetime.timedelta(seconds=int(time.time()-start_time))))
-                        time.sleep(1/1E6)
+                        
+                        time.sleep(1.0/1E6)
+
                     ret = proc.wait()
                     self.menu.delete("stop process")
                     self.menu.delete(self.menu.index(tkinter.END))
