@@ -66,6 +66,7 @@ class TabButton(tkinter.Button):
 class CmdButton(tkinter.Button):
     cmd = ""
     text = ""
+    text_strvar = None
     tab = None
     keyname = ""
     show_status = False
@@ -88,6 +89,8 @@ class CmdButton(tkinter.Button):
         self.cmd_file = cmd_file
         self.cmd_line = cmd_line
         self.menu = tkinter.Menu(self, tearoff = 0)
+        self.text_strvar = tkinter.StringVar(self, self.text)
+        self.config(textvariable=self.text_strvar)
         # edit_menu = tkinter.Menu(self.menu, tearoff = 0)
 
         self.configure(command=lambda y=self: y.on_l_click())
@@ -172,7 +175,7 @@ class CmdButton(tkinter.Button):
                         time_text = self.text+"\n"+str(datetime.timedelta(seconds=int(time.time()-start_time)))
                         if self.show_status and current_text != time_text:
                             current_text = time_text
-                            self.config(text=current_text)
+                            self.text_strvar.set(current_text)
                         
                         line = reader.readline(1024*4) # this can hang if we read too many chars.
                         if line:
