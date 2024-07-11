@@ -148,7 +148,7 @@ class CmdButton(tkinter.Button):
         if self.confirm and not tkinter.messagebox.askyesno("Confirm", f"Are you sure you want to run '{self.cget('text')}'?"): return
         if self.cget("state") != "disabled":
             self.config(state="disabled")
-            now  = datetime.datetime.now().strftime('%d_%m_%Y-%H_%M_%S')
+            now  = datetime.datetime.now().strftime('%Y_%m_%d-%H_%M_%S')
             log_path = self.log_fmt.format(now=now)
             log_path = os.path.abspath(log_path)
             os.makedirs(os.path.dirname(log_path), exist_ok=True)
