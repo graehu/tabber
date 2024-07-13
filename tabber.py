@@ -117,6 +117,8 @@ class CmdButton(tkinter.Button):
             self.last_log = sorted([log_dir+"/"+l for l in os.listdir(log_dir)], key=lambda x: os.path.getmtime(x))[-1]
         self.confirm = confirm
         CmdButton.all_buttons.append(self)
+        # Making room for time stats.
+        self.text_strvar.set(self.text+"\n--------")
 
     def show_menu(self, event):
         try:
