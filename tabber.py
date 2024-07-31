@@ -93,7 +93,9 @@ class CmdButton(tkinter.Button):
         self.config(textvariable=self.text_strvar)
         # edit_menu = tkinter.Menu(self.menu, tearoff = 0)
 
-        self.configure(command=lambda y=self: y.on_l_click())
+        # self.configure(command=lambda y=self: y.on_l_click())
+        self.bind("<Button-1>", lambda x, y=self: y.on_l_click())
+        self.bind("<Shift-Button-1>", lambda x, y=self: y.on_shift_l_click())
         self.menu.add_command(label="edit button", command=lambda s=self: open_file(s.cmd_file, s.cmd_line))
         # self.menu.add_cascade(label="files", menu=edit_menu)
 
@@ -200,6 +202,7 @@ class CmdButton(tkinter.Button):
             
             if self.show_status and ret == 0: self.config(bg="green3", activebackground="green2")
             elif self.show_status: self.config(bg="red2",activebackground="red1")
+            else: self.config(bg="#e0e0e0",activebackground="#f0f0f0")
             self.last_ret = ret
             if ret != 0: open_file(log_path)
             self.config(state="normal")
@@ -222,6 +225,18 @@ class CmdButton(tkinter.Button):
             self.thread = threading.Thread(target=lambda x: x._run_thread(), args=[self])
             self.thread.start()
         return "break"
+    
+
+    def on_shift_l_click(self):
+        if self.thread == None or not self.thread.is_alive():
+            if not self in g_button_queue:
+                g_button_queue.append(self)
+                self.config(bg="yellow", activebackground="lightyellow")
+            else:
+                g_button_queue.remove(self)
+                self.config(bg="#e0e0e0",activebackground="#f0f0f0")
+        return "break"
+
 
 class pushd:
     path = ""
@@ -269,6 +284,7 @@ tab_num = 0
 included = []
 img_map = { "": None }
 g_show_tab = None # TODO: this is a bit of a hack, too much stuff happens inside of build_widgets, fix later.
+g_button_queue = []
 
 def build_widgets():
     global g_show_tab
@@ -484,9 +500,28 @@ def run_buttons(in_tabs):
         tkinter.messagebox.showerror("Run Failure", f"Uncaught Exception: \n\n{argv}\n\n{str(e)}\n\nRun cancelled.")
 
 
+def button_queue():
+    global g_button_queue
+    while True:
+        time.sleep(0.5)
+        if g_button_queue:
+            button = g_button_queue.pop(0)
+            print(f"running {button.keyname}")
+            g_show_tab(button.tab)
+            if button.run() != 0:
+                tkinter.messagebox.showerror("Run Failure", f"{button.keyname} returned non zero!\n\nRun cancelled.")
+                for button in g_button_queue:
+                    button.config(bg="#e0e0e0",activebackground="#f0f0f0")
+                g_button_queue = []
+
+
+
 tab_dict = build_widgets()
 run_thread = threading.Thread(target=run_buttons, args=[tab_dict])
 run_thread.start()
+
+queue_thread = threading.Thread(target=button_queue)
+queue_thread.start()
 
 mod_times = {}
 def watch_includes():
