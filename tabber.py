@@ -391,6 +391,7 @@ def build_widgets():
         remainder =  num_butts%bx
         for i in range(0, inv_remainder):
             spacer = tkinter.Button(butts)
+            spacer.config(text="\n") # becaues I add the ---- to buttons now. I should do something better.
             spacer.pack(in_=frames[(i+remainder)%bx], side="top", expand=True, fill="both")
             spacer.config(state="disabled")
 
