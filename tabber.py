@@ -79,6 +79,7 @@ class CmdButton(tkinter.Button):
     last_ret = 0
     confirm = False
     all_buttons = []
+    is_running = False
     def __init__(self, tab, keyname, cmd, show_status, cmd_file, cmd_line, log_dir, confirm, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.text = self.cget("text")
@@ -152,6 +153,7 @@ class CmdButton(tkinter.Button):
         if self.confirm and not tkinter.messagebox.askyesno("Confirm", f"Are you sure you want to run '{self.text}'?"): return
         if self.cget("state") != "disabled":
             print(f"running '{self.text}': {self.cmd}")
+            self.is_running = True
             self.config(state="disabled")
             now  = datetime.datetime.now().strftime('%Y_%m_%d-%H_%M_%S')
             log_path = self.log_fmt.format(now=now)
@@ -200,6 +202,7 @@ class CmdButton(tkinter.Button):
                 print("cmd    : "+self.cmd, file=writer)
                 print("time   : "+str(datetime.timedelta(seconds=time.time()-start_time)), file=writer)
                 print("success: "+str(bool(ret==0)) + f" ({ret})", file=writer)
+            self.is_running = False
             
             if self.show_status and ret == 0: self.config(bg="green3", activebackground="green2")
             elif self.show_status: self.config(bg="red2",activebackground="red1")
@@ -504,7 +507,7 @@ def button_queue():
     global g_button_queue
     while True:
         time.sleep(0.5)
-        if g_button_queue:
+        if g_button_queue and not any([b.is_running for b in CmdButton.all_buttons]):
             button = g_button_queue.pop(0)
             g_show_tab(button.tab)
             if button.run() != 0:
