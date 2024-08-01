@@ -492,7 +492,8 @@ def run_buttons(in_tabs):
                 else: tkinter.messagebox.showerror("Run Failure", f"{t}.{b} is not a button in tabber!\n\nRun cancelled."); return
             else: tkinter.messagebox.showerror("Run Failure", f"{t} is not a tab in tabber!\n\nRun cancelled."); return
 
-        for button in buttons: g_button_queue.append(button)
+        for button in buttons:
+            button.on_shift_l_click()
 
     except Exception as e:
         argv = " ".join(sys.argv[1:])
