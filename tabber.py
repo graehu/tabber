@@ -149,8 +149,9 @@ class CmdButton(tkinter.Button):
 
 
     def _run_thread(self):
-        if self.confirm and not tkinter.messagebox.askyesno("Confirm", f"Are you sure you want to run '{self.cget('text')}'?"): return
+        if self.confirm and not tkinter.messagebox.askyesno("Confirm", f"Are you sure you want to run '{self.text}'?"): return
         if self.cget("state") != "disabled":
+            print(f"running '{self.text}': {self.cmd}")
             self.config(state="disabled")
             now  = datetime.datetime.now().strftime('%Y_%m_%d-%H_%M_%S')
             log_path = self.log_fmt.format(now=now)
@@ -492,7 +493,7 @@ def run_buttons(in_tabs):
             else: tkinter.messagebox.showerror("Run Failure", f"{t} is not a tab in tabber!\n\nRun cancelled."); return
 
         for button in buttons: g_button_queue.append(button)
-        
+
     except Exception as e:
         argv = " ".join(sys.argv[1:])
         tkinter.messagebox.showerror("Run Failure", f"Uncaught Exception: \n\n{argv}\n\n{str(e)}\n\nRun cancelled.")
@@ -504,7 +505,6 @@ def button_queue():
         time.sleep(0.5)
         if g_button_queue:
             button = g_button_queue.pop(0)
-            print(f"running {button.keyname}")
             g_show_tab(button.tab)
             if button.run() != 0:
                 tkinter.messagebox.showerror("Run Failure", f"{button.keyname} returned non zero!\n\nRun cancelled.")
