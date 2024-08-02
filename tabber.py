@@ -536,7 +536,7 @@ def watch_includes():
         else:
             mod_times[inc] = os.path.getmtime(inc)
     if wants_build:
-        if len(threading.enumerate()) == 1:
+        if not any([b.is_running for b in CmdButton.all_buttons]):
             build_widgets()
         else:
             tkinter.messagebox.showerror("Reload Failure", "Command in progress!\n\nSave the config after the command finishes or open a new instance of tabber.")
