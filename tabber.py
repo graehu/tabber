@@ -2,6 +2,7 @@ import tkinter
 import tkinter.messagebox
 import tomllib
 import os
+import re
 import platform
 import sys
 import subprocess
@@ -335,10 +336,13 @@ def build_widgets():
                 settings = {**settings, **new_settings}
     except Exception as e:
         error_message = include +": \n"+str(e)
+        line = 0
+        if match := re.search("\(at line ([0-9]+)", str(e)): line = int(match.group(1))
         lab = tkinter.Label(master, text=error_message)
         lab.place(relx=0.5, rely=0.5, anchor=tkinter.CENTER)
+        master.configure(bg="#d9d9d9")
         if os.path.exists(include):
-            open_file(include)
+            open_file(include, line)
             if not include in old_included: old_included.append(include)
 
         master.after(100, lambda x: master.lift())
