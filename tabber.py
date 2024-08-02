@@ -36,7 +36,7 @@ def kill_proc(proc):
         os.kill(proc.pid, signal.SIGTERM)
     else:
         proc.kill()
-    
+
 
 def open_file(in_path, line=0):
     path = os.path.abspath(in_path)
@@ -52,7 +52,7 @@ def open_file(in_path, line=0):
             else: subprocess.run([editor, path])
     else:
         if os.path.isdir(path): webbrowser.open(path)
-        # Never open a file without an editor, it may run.    
+        # Never open a file without an editor, it may run.
         else: webbrowser.open(os.path.dirname(path))
 
 
@@ -111,7 +111,7 @@ class CmdButton(tkinter.Button):
                             path = "/".join((path,file))
                             self.menu.add_command(label ="edit "+file, command=lambda s=self, p=path: open_file(p))
                 except Exception: pass
-        
+
         self.menu.add_command(label ="copy command", command=lambda s=self: set_clipboard(s.cmd))
         self.menu.add_command(label ="open log", command=lambda s=self: open_file(s.last_log))
         self.menu.add_command(label ="open log folder", command=lambda s=self: open_file(log_dir))
@@ -134,11 +134,11 @@ class CmdButton(tkinter.Button):
                     self.after(1, lambda x=self: x.config(state="normal"))
                 for b in bindids: master.unbind(*b)
                 return "break"
-            
+
             for butt in CmdButton.all_buttons:
                 if butt == self: continue
                 pop_unpost(butt)
-            
+
             self.config(state="disabled")
             self.menu.post(event.x_root, event.y_root)
             bindids = [["<Escape>", master.bind("<Escape>", lambda x, y=self: pop_unpost(y))]]
@@ -175,24 +175,26 @@ class CmdButton(tkinter.Button):
                     cmd_window.protocol("WM_DELETE_WINDOW", lambda p=proc: kill_proc(p))
                     self.menu.add_separator()
                     self.menu.add_command(label ="stop process", command=lambda p=proc: kill_proc(p))
-                    
+
                     # Run loop
                     current_text = self.text
                     while proc.poll() == None:
-                        
+
                         time_text = self.text+"\n"+str(datetime.timedelta(seconds=int(time.time()-start_time)))
                         if self.show_status and current_text != time_text:
                             current_text = time_text
                             self.text_strvar.set(current_text)
-                        
-                        line = reader.readline(1024*4) # this can hang if we read too many chars.
+
+                        line = reader.readline(1024*4)
                         if line:
                             txt.configure(state=tkinter.NORMAL)
-                            txt.insert(tkinter.END, line)
+                            while line:
+                                txt.insert(tkinter.END, line)
+                                line = reader.readline(1024*4)
                             txt.configure(state=tkinter.DISABLED)
                             txt.see(tkinter.END)
-                        
-                        time.sleep(1.0/1E6)
+
+                        time.sleep(0.1)
 
                     ret = proc.wait()
                     self.menu.delete("stop process")
@@ -204,14 +206,14 @@ class CmdButton(tkinter.Button):
                 print("time   : "+str(datetime.timedelta(seconds=time.time()-start_time)), file=writer)
                 print("success: "+str(bool(ret==0)) + f" ({ret})", file=writer)
             self.is_running = False
-            
+
             if self.show_status and ret == 0: self.config(bg="green3", activebackground="green2")
             elif self.show_status: self.config(bg="red2",activebackground="red1")
             else: self.config(bg="#e0e0e0",activebackground="#f0f0f0")
             self.last_ret = ret
             if ret != 0: open_file(log_path)
             self.config(state="normal")
-    
+
 
     def run(self):
         if self.thread == None or not self.thread.is_alive():
@@ -230,7 +232,7 @@ class CmdButton(tkinter.Button):
             self.thread = threading.Thread(target=lambda x: x._run_thread(), args=[self])
             self.thread.start()
         return "break"
-    
+
 
     def on_shift_l_click(self):
         if self.thread == None or not self.thread.is_alive():
@@ -311,7 +313,7 @@ def build_widgets():
                     print("loading "+include)
                     inc = tomllib.load(open(include, "rb"))
                     recursive_add_keyval(inc, "origin_toml", include)
-                    
+
                     lines = open(include, "r", encoding="utf-8").readlines()
                     lines = zip(lines, range(1, len(lines)))
                     for k1 in inc:
@@ -384,7 +386,7 @@ def build_widgets():
         for child in butts.winfo_children():
             child.pack_forget()
             if not "cmdbutton" in str(child): child.destroy()
-        
+
         frames = []
         for i in range(0, bx):
             frame = tkinter.Frame(butts)
@@ -394,7 +396,7 @@ def build_widgets():
         for i in range(0, num_butts):
             tab_butts[i].pack(in_=frames[i%bx], side="top", expand=True, fill="both")
             tab_butts[i].lift()
-        
+
         inv_remainder =(num_butts*bx-(num_butts%bx))%bx
         remainder =  num_butts%bx
         for i in range(0, inv_remainder):
@@ -435,7 +437,7 @@ def build_widgets():
                 cmd = section["command"] if "command" in section else "no_command"
                 show_status = section["show_status"] if "show_status" in section else (defaults["show_status"] if "show_status" in defaults else False)
                 name = section["name"] if "name" in section else sec
-                confirm = section["confirm"] if "confirm" in section else (defaults["confirm"] if "confirm" in defaults else True) 
+                confirm = section["confirm"] if "confirm" in section else (defaults["confirm"] if "confirm" in defaults else True)
                 icon_subsample = section["icon_subsample"] if "icon_subsample" in section else (1,1)
                 image = get_image(icon, icon_subsample)
                 button = CmdButton(tab_button, sec, cmd, show_status, toml_file, cmd_line, log_dir+sec, confirm, butts, text=name, image=image, compound="left")
@@ -476,7 +478,7 @@ def build_widgets():
         show_tab(tabs.winfo_children()[tab_num])
     else:
         show_tab(tabs.winfo_children()[0])
-    
+
     return tab_dict
 
 def run_buttons(in_tabs):
@@ -489,7 +491,7 @@ def run_buttons(in_tabs):
                 arg = [a.split(".") for a in arg.split(",")]
                 for a in arg:
                     if len(a) != 2: tkinter.messagebox.showerror("Run Failure", f"{'.'.join(a)} is not a button in tabber!\n\nRun cancelled."); return
-                
+
                 runners.extend(arg)
 
         for t, b in runners:
