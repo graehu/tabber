@@ -16,6 +16,66 @@ import time
 import signal
 import math
 import shutil
+import smtplib
+import email.mime.text as mime_text
+import email.mime.multipart as mime_multipart
+import email.mime.application as mime_application
+
+html = """
+<html>
+  <body>
+    Hello,
+    <br>
+    button: {button}<br>
+    result: {status}<br>
+    time elapsed: {time_taken}<br>
+    <br>
+    Thanks,<br>
+    Tabber
+  </body>
+</html>
+"""
+
+def send_report(login, host, recipients, report, attachments=None):
+    message = mime_multipart.MIMEMultipart('html')
+    message["Subject"] = f"Tabber - {report['button']} - {report['status']}"
+    message["From"] = "Tabber"
+    message["To"] = ", ".join(recipients)
+
+    message_str = html
+    message_str = message_str.format_map(report)
+
+    message_mime = mime_text.MIMEText(message_str, 'html')
+    message.attach(message_mime)
+    if attachments:
+        for f in attachments:
+            if f is None or (not os.path.exists(f)):
+                print("failed to send attachement: "+str(f))
+                continue
+            with open(f, "rb") as fil:
+                part = mime_application.MIMEApplication(
+                    fil.read(),
+                    Name=os.path.basename(f)
+                )
+            # After the file is closed
+            part['Content-Disposition'] = (
+                'attachment; filename="%s"'
+                % os.path.basename(f)
+            )
+            message.attach(part)
+
+    if login:
+        try:
+            server = smtplib.SMTP_SSL(host)
+            server.ehlo()
+            server.login(*login)
+            server.send_message(message)
+            server.quit()
+        except Exception as e:
+            print("failed to send mail")
+            print(e)
+
+
 
 if platform.system() == "Windows":
     import ctypes
@@ -81,7 +141,9 @@ class CmdButton(tkinter.Button):
     confirm = False
     all_buttons = []
     is_running = False
-    def __init__(self, tab, keyname, cmd, show_status, cmd_file, cmd_line, log_dir, confirm, *args, **kwargs):
+    conf_globals = {}
+    mail_conditions = []
+    def __init__(self, tab, keyname, cmd, show_status, cmd_file, cmd_line, log_dir, confirm, mail_conditions, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.text = self.cget("text")
         self.tab = tab
@@ -94,6 +156,8 @@ class CmdButton(tkinter.Button):
         self.text_strvar = tkinter.StringVar(self, self.text)
         self.config(textvariable=self.text_strvar)
         # edit_menu = tkinter.Menu(self.menu, tearoff = 0)
+        self.conf_globals = g_conf_globals.copy()
+        self.mail_conditions = mail_conditions
 
         # self.configure(command=lambda y=self: y.on_l_click())
         self.bind("<Button-1>", lambda x, y=self: y.on_l_click())
@@ -205,6 +269,17 @@ class CmdButton(tkinter.Button):
                 print("cmd    : "+self.cmd, file=writer)
                 print("time   : "+str(datetime.timedelta(seconds=time.time()-start_time)), file=writer)
                 print("success: "+str(bool(ret==0)) + f" ({ret})", file=writer)
+                if self.mail_conditions and ((ret==0) in self.mail_conditions):
+                    send_report(self.conf_globals["mail_login"],
+                                self.conf_globals["mail_host"],
+                                self.conf_globals["mail_to"],
+                                {
+                                    "button": self.text,
+                                    "status": str(bool(ret==0)) + f" ({ret})",
+                                    "time_taken": str(datetime.timedelta(seconds=time.time()-start_time))
+                                },
+                                [self.last_log])
+
             self.is_running = False
 
             if self.show_status and ret == 0: self.config(bg="green3", activebackground="green2")
@@ -292,6 +367,7 @@ included = []
 img_map = { "": None }
 g_show_tab = None # TODO: this is a bit of a hack, too much stuff happens inside of build_widgets, fix later.
 g_button_queue = []
+g_conf_globals = {}
 
 def build_widgets():
     global g_show_tab
@@ -438,9 +514,10 @@ def build_widgets():
                 show_status = section["show_status"] if "show_status" in section else (defaults["show_status"] if "show_status" in defaults else False)
                 name = section["name"] if "name" in section else sec
                 confirm = section["confirm"] if "confirm" in section else (defaults["confirm"] if "confirm" in defaults else True)
+                mail_conditions = section["mail_conditions"] if "mail_conditions" in section else (defaults["mail_conditions"] if "mail_conditions" in defaults else [])
                 icon_subsample = section["icon_subsample"] if "icon_subsample" in section else (1,1)
                 image = get_image(icon, icon_subsample)
-                button = CmdButton(tab_button, sec, cmd, show_status, toml_file, cmd_line, log_dir+sec, confirm, butts, text=name, image=image, compound="left")
+                button = CmdButton(tab_button, sec, cmd, show_status, toml_file, cmd_line, log_dir+sec, confirm, mail_conditions, butts, text=name, image=image, compound="left")
                 configs = {}
                 for k in section:
                     if k in ["command", "icon", "name", "image", "confirm"]: continue
@@ -472,7 +549,10 @@ def build_widgets():
 
     for tab in settings:
         new_tab = settings[tab]
-        if isinstance(new_tab, dict): create_tab(tab, new_tab)
+        if isinstance(new_tab, dict):
+            create_tab(tab, new_tab)
+        else:
+            g_conf_globals[tab] = settings[tab]
 
     if len(tabs.winfo_children()) > tab_num:
         show_tab(tabs.winfo_children()[tab_num])
