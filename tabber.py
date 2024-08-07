@@ -39,7 +39,7 @@ html = """
 def send_report(login, host, recipients, report, attachments=None):
     message = mime_multipart.MIMEMultipart('html')
     message["Subject"] = f"Tabber - {report['button']} - {report['status']}"
-    message["From"] = "Tabber"
+    message["From"] = login[0] + " <Tabber Reporter>"
     message["To"] = ", ".join(recipients)
 
     message_str = html
@@ -67,7 +67,7 @@ def send_report(login, host, recipients, report, attachments=None):
     try:
         server = smtplib.SMTP(host)
         server.ehlo()
-        if login: server.login(*login)
+        if len(login) == 2: server.login(*login)
         server.send_message(message)
         server.quit()
     except Exception as e:
@@ -76,7 +76,7 @@ def send_report(login, host, recipients, report, attachments=None):
         try:
             server = smtplib.SMTP_SSL(host)
             server.ehlo()
-            if login: server.login(*login)
+            if len(login) == 2: server.login(*login)
             server.send_message(message)
             server.quit()
         except Exception as e:
