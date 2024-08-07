@@ -37,9 +37,12 @@ html = """
 """
 
 def send_report(login, host, recipients, report, attachments=None):
+    if not login or not host or not recipients or not report:
+        print("failed to send mail, required arguments not given.")
+        return
     message = mime_multipart.MIMEMultipart('html')
     message["Subject"] = f"Tabber - {report['button']} - {report['status']}"
-    message["From"] = login[0] + " <Tabber Reporter>"
+    message["From"] = login[0]
     message["To"] = ", ".join(recipients)
 
     message_str = html
