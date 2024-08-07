@@ -64,15 +64,23 @@ def send_report(login, host, recipients, report, attachments=None):
             )
             message.attach(part)
 
-    if login:
+    try:
+        server = smtplib.SMTP(host)
+        server.ehlo()
+        if login: server.login(*login)
+        server.send_message(message)
+        server.quit()
+    except Exception as e:
+        print("failed to send mail using smpt, trying smptssl")
+        print(e)
         try:
             server = smtplib.SMTP_SSL(host)
             server.ehlo()
-            server.login(*login)
+            if login: server.login(*login)
             server.send_message(message)
             server.quit()
         except Exception as e:
-            print("failed to send mail")
+            print("failed to send mail using smptssl")
             print(e)
 
 
