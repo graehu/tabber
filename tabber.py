@@ -189,11 +189,11 @@ class CmdButton(tkinter.Button):
 
         self.menu.add_command(label ="copy command", command=lambda s=self: set_clipboard(s.cmd))
         self.menu.add_command(label ="open log", command=lambda s=self: open_file(s.last_log))
+        log_dir = (os.path.dirname(cmd_file)+"/"+log_dir).replace("\\", "/")
         self.menu.add_command(label ="open log folder", command=lambda s=self: open_file(log_dir))
         self.bind("<Button-3>", lambda x, s=self: s.show_menu(x))
-        self.log_fmt = log_dir+"/"+os.path.basename(log_dir)+"_{now}.log"
         
-        # print(log_dir)
+        self.log_fmt = log_dir+"/"+os.path.basename(log_dir)+"_{now}.log"
         
         if os.path.exists(log_dir+"/") and os.listdir(log_dir+"/"):
             self.last_log = sorted([log_dir+"/"+l for l in os.listdir(log_dir)], key=lambda x: os.path.getmtime(x))[-1]
