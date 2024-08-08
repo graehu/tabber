@@ -87,11 +87,11 @@ def send_report(login, host, recipients, report, attachments=None):
             print(e)
 
 
-
 if platform.system() == "Windows":
     import ctypes
     myappid = 'graehu.tabber.tabber.1' # arbitrary string
     ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID(myappid)
+
 
 editors = ["code", "subl", "notepad++", "gedit", "notepad"]
 editor = None
@@ -192,6 +192,9 @@ class CmdButton(tkinter.Button):
         self.menu.add_command(label ="open log folder", command=lambda s=self: open_file(log_dir))
         self.bind("<Button-3>", lambda x, s=self: s.show_menu(x))
         self.log_fmt = log_dir+"/"+os.path.basename(log_dir)+"_{now}.log"
+        
+        # print(log_dir)
+        
         if os.path.exists(log_dir+"/") and os.listdir(log_dir+"/"):
             self.last_log = sorted([log_dir+"/"+l for l in os.listdir(log_dir)], key=lambda x: os.path.getmtime(x))[-1]
         self.confirm = confirm
@@ -226,10 +229,12 @@ class CmdButton(tkinter.Button):
 
 
     def _run_thread(self):
+        global g_is_running
         if self.confirm and not tkinter.messagebox.askyesno("Confirm", f"Are you sure you want to run '{self.text}'?"): return
         if self.cget("state") != "disabled":
             print(f"running '{self.text}': {self.cmd}")
             self.is_running = True
+            wants_mail = True
             self.config(state="disabled")
             now  = datetime.datetime.now().strftime('%Y_%m_%d-%H_%M_%S')
             log_path = self.log_fmt.format(now=now)
@@ -247,9 +252,14 @@ class CmdButton(tkinter.Button):
                     txt.pack(expand=True, fill="both")
                     start_time = time.time()
                     proc = subprocess.Popen(self.cmd, stdout=writer, stderr=subprocess.STDOUT, shell=True)
-                    cmd_window.protocol("WM_DELETE_WINDOW", lambda p=proc: kill_proc(p))
+                    def stop_process():
+                        nonlocal wants_mail, proc
+                        wants_mail = False
+                        kill_proc(proc)
+                    
+                    cmd_window.protocol("WM_DELETE_WINDOW", lambda: stop_process())
                     self.menu.add_separator()
-                    self.menu.add_command(label ="stop process", command=lambda p=proc: kill_proc(p))
+                    self.menu.add_command(label ="stop process", command=lambda: stop_process())
 
                     # Run loop
                     current_text = self.text
@@ -270,6 +280,7 @@ class CmdButton(tkinter.Button):
                             txt.see(tkinter.END)
 
                         time.sleep(0.1)
+                        if not g_is_running: kill_proc(proc); break
 
                     ret = proc.wait()
                     self.menu.delete("stop process")
@@ -280,7 +291,7 @@ class CmdButton(tkinter.Button):
                 print("cmd    : "+self.cmd, file=writer)
                 print("time   : "+str(datetime.timedelta(seconds=time.time()-start_time)), file=writer)
                 print("success: "+str(bool(ret==0)) + f" ({ret})", file=writer)
-                if self.mail_conditions and ((ret==0) in self.mail_conditions):
+                if wants_mail and self.mail_conditions and ((ret==0) in self.mail_conditions):
                     send_report(self.conf_globals["mail_login"],
                                 self.conf_globals["mail_host"],
                                 self.conf_globals["mail_to"],
@@ -379,6 +390,7 @@ img_map = { "": None }
 g_show_tab = None # TODO: this is a bit of a hack, too much stuff happens inside of build_widgets, fix later.
 g_button_queue = []
 g_conf_globals = {}
+g_is_running = True
 
 def build_widgets():
     global g_show_tab
@@ -601,8 +613,8 @@ def run_buttons(in_tabs):
 
 
 def button_queue():
-    global g_button_queue
-    while True:
+    global g_button_queue, g_is_running
+    while g_is_running:
         time.sleep(0.5)
         if g_button_queue and not any([b.is_running for b in CmdButton.all_buttons]):
             button = g_button_queue.pop(0)
@@ -641,3 +653,4 @@ def watch_includes():
 
 watch_includes()
 master.mainloop()
+g_is_running = False
