@@ -7,8 +7,6 @@ import platform
 import sys
 import subprocess
 import shlex
-try: from idlelib.tooltip import Hovertip
-except Exception: pass
 import threading
 import webbrowser
 import datetime
@@ -127,6 +125,43 @@ def open_file(in_path, line=0):
         else: webbrowser.open(os.path.dirname(path))
 
 
+class ToolTip(object):
+
+    def __init__(self, widget):
+        self.widget = widget
+        self.tipwindow = None
+        self.id = None
+        self.x = self.y = 0
+
+    def showtip(self, text):
+        "Display text in tooltip window"
+        self.text = text
+        if self.tipwindow or not self.text:
+            return
+        x, y, cx, cy = self.widget.bbox("insert")
+        x = x + self.widget.winfo_rootx()
+        y = y + cy + self.widget.winfo_rooty() + self.widget.winfo_height()
+        self.tipwindow = tw = tkinter.Toplevel(self.widget)
+        tw.wm_overrideredirect(1)
+        tw.wm_geometry("%dx%d+%d+%d" % (self.widget.winfo_width(), 16, x, y))
+        label = tkinter.Label(tw, text=self.text, justify=tkinter.LEFT,
+                      background="#ffffe0", relief=tkinter.SOLID, borderwidth=1,
+                      font=("tahoma", "11", "normal"))
+        label.pack(ipadx=1, fill="both")
+
+    def hidetip(self):
+        tw = self.tipwindow
+        self.tipwindow = None
+        if tw:
+            tw.destroy()
+
+def CreateToolTip(widget, text):
+    toolTip = ToolTip(widget) 
+    widget.bind('<Enter>', lambda x: toolTip.showtip(text))
+    widget.bind('<Leave>', lambda x: toolTip.hidetip())
+
+
+
 class TabButton(tkinter.Button):
     keyname = ""
     rows = 0
@@ -166,27 +201,34 @@ class CmdButton(tkinter.Button):
         self.menu = tkinter.Menu(self, tearoff = 0)
         self.text_strvar = tkinter.StringVar(self, self.text)
         self.config(textvariable=self.text_strvar)
-        # edit_menu = tkinter.Menu(self.menu, tearoff = 0)
+        edit_menu = tkinter.Menu(self.menu, tearoff = 0)
+        # self.menu.add_checkbutton(label="checkbutton")
+        # self.menu.add_radiobutton(label="radiobutton")
+        # self.menu.add_separator()
         self.conf_globals = g_conf_globals.copy()
         self.mail_conditions = mail_conditions
 
         # self.configure(command=lambda y=self: y.on_l_click())
         self.bind("<Button-1>", lambda x, y=self: y.on_l_click())
         self.bind("<Shift-Button-1>", lambda x, y=self: y.on_shift_l_click())
-        self.menu.add_command(label="edit button", command=lambda s=self: open_file(s.cmd_file, s.cmd_line))
-        # self.menu.add_cascade(label="files", menu=edit_menu)
-
+        added_files = False
         for path in shlex.split(cmd):
             if os.path.exists(path) and os.path.isfile(path):
-                self.menu.add_command(label ="edit "+os.path.basename(path), command=lambda s=self, p=path: open_file(p))
+                # self.menu.add_command(label ="edit "+os.path.basename(path), command=lambda s=self, p=path: open_file(p))
+                edit_menu.add_command(label ="edit "+os.path.basename(path), command=lambda s=self, p=path: open_file(p))
+                added_files = True
             elif os.path.exists(path) and os.path.isdir(path):
                 try:
                     for file in os.listdir(path):
                         if file in cmd:
                             path = "/".join((path,file))
-                            self.menu.add_command(label ="edit "+file, command=lambda s=self, p=path: open_file(p))
+                            # self.menu.add_command(label ="edit "+file, command=lambda s=self, p=path: open_file(p))
+                            edit_menu.add_command(label ="edit "+file, command=lambda s=self, p=path: open_file(p))
+                            added_files = True
                 except Exception: pass
 
+        if added_files: self.menu.add_cascade(label="files", menu=edit_menu)
+        self.menu.add_command(label="edit button", command=lambda s=self: open_file(s.cmd_file, s.cmd_line))
         self.menu.add_command(label ="copy command", command=lambda s=self: set_clipboard(s.cmd))
         self.menu.add_command(label ="open log", command=lambda s=self: open_file(s.last_log))
         log_dir = (os.path.dirname(cmd_file)+"/"+log_dir).replace("\\", "/")
@@ -205,24 +247,35 @@ class CmdButton(tkinter.Button):
     def show_menu(self, event):
         try:
             bindids = []
-            def pop_unpost(self):
+            unpost_frame = tkinter.Frame(master=master, background='')
+            unpost_frame.place(relheight=1, relwidth=1)
+            def pop_unpost(self, event):
                 nonlocal bindids
+                # if event: print(event)
                 self.menu.unpost()
-                if self.thread == None or not self.thread.is_alive():
-                    self.after(1, lambda x=self: x.config(state="normal"))
-                for b in bindids: master.unbind(*b)
+                for b in bindids: b[0].unbind(*b[1:])
                 return "break"
 
             for butt in CmdButton.all_buttons:
                 if butt == self: continue
-                pop_unpost(butt)
-
+                pop_unpost(butt, None)
+            
             self.config(state="disabled")
-            self.menu.post(event.x_root, event.y_root)
-            bindids = [["<Escape>", master.bind("<Escape>", lambda x, y=self: pop_unpost(y))]]
-            bindids += [["<Button-1>", master.bind("<Button-1>", lambda x, y=self: pop_unpost(y))]]
-            bindids += [["<FocusOut>", master.bind("<FocusOut>", lambda x, y=self: pop_unpost(y))]]
+            self.menu.post(event.x_root-10, event.y_root-10)
+            bindids = [[master, "<Escape>", master.bind("<Escape>", lambda x, y=self: pop_unpost(y, x))]]
+            unpost_frame.bind("<Button-1>", lambda x, y=self: pop_unpost(y, x))
 
+            def menu_unmapped():
+                nonlocal unpost_frame
+                unpost_frame.destroy()
+                if self.thread == None or not self.thread.is_alive():
+                    self.after(1, lambda x=self: x.config(state="normal"))
+
+            self.menu.bind("<Unmap>", lambda x: menu_unmapped())
+
+
+        except Exception as e:
+            print(e)
         finally:
             self.menu.grab_release()
             return "break"
@@ -550,8 +603,7 @@ def build_widgets():
                 except Exception as e:
                     open_file(toml_file)
                     tkinter.messagebox.showerror(f"ERROR '[{tab_name}.{sec}]'", str(e))
-                try: Hovertip(button, ">"+cmd, 500)
-                except Exception: pass
+                CreateToolTip(button, cmd)
                 tab_butts.append(button)
             elif sec.startswith("buttons_"): defaults[sec.replace("buttons_", "")] = section
             elif sec == "name": tab_name = section
@@ -611,6 +663,15 @@ def run_buttons(in_tabs):
         argv = " ".join(sys.argv[1:])
         tkinter.messagebox.showerror("Run Failure", f"Uncaught Exception: \n\n{argv}\n\n{str(e)}\n\nRun cancelled.")
 
+
+# import tkinter.simpledialog
+# thinking about how you could add args before a run.
+# testy = tkinter.simpledialog.askstring('cmdline', 'args', initialvalue="doot")
+# tkinter.messagebox.showinfo('Hello!', 'Hi, {}'.format(testy))
+# testy = tkinter.simpledialog.askfloat("ooo", "wee")
+# tkinter.messagebox.showinfo('Hello!', 'Hi, {}'.format(testy))
+# testy = tkinter.simpledialog.askinteger("ooo", "asldkfj")
+# tkinter.messagebox.showinfo('Hello!', 'Hi, {}'.format(testy))
 
 def button_queue():
     global g_button_queue, g_is_running
