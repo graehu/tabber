@@ -245,7 +245,6 @@ class CmdButton(tkinter.Button):
         self.text_strvar.set(self.text+"\n--------")
 
     def show_menu(self, event):
-        print("trying to show menu")
         try:
             bindids = []
             unpost_frame = tkinter.Frame(master=master, background='')
