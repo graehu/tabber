@@ -146,7 +146,7 @@ class ToolTip(object):
         tw.wm_geometry("%dx%d+%d+%d" % (self.widget.winfo_width(), 16, x, y))
         label = tkinter.Label(tw, text=self.text, justify=tkinter.LEFT,
                       background="#ffffe0", relief=tkinter.SOLID, borderwidth=1,
-                      font=("tahoma", "11", "normal"))
+                      font=("tahoma", "8", "normal"))
         label.pack(ipadx=1, fill="both")
 
     def hidetip(self):
@@ -245,6 +245,7 @@ class CmdButton(tkinter.Button):
         self.text_strvar.set(self.text+"\n--------")
 
     def show_menu(self, event):
+        print("trying to show menu")
         try:
             bindids = []
             unpost_frame = tkinter.Frame(master=master, background='')
@@ -255,30 +256,36 @@ class CmdButton(tkinter.Button):
                 self.menu.unpost()
                 for b in bindids: b[0].unbind(*b[1:])
                 return "break"
-
+            
             for butt in CmdButton.all_buttons:
                 if butt == self: continue
                 pop_unpost(butt, None)
             
             self.config(state="disabled")
-            self.menu.post(event.x_root-10, event.y_root-10)
-            bindids = [[master, "<Escape>", master.bind("<Escape>", lambda x, y=self: pop_unpost(y, x))]]
-            unpost_frame.bind("<Button-1>", lambda x, y=self: pop_unpost(y, x))
-
+            
             def menu_unmapped():
                 nonlocal unpost_frame
-                unpost_frame.destroy()
-                if self.thread == None or not self.thread.is_alive():
-                    self.after(1, lambda x=self: x.config(state="normal"))
+                if unpost_frame:
+                    unpost_frame.destroy()
+                    unpost_frame = None
+                    if self.thread == None or not self.thread.is_alive():
+                        self.after(1, lambda x=self: x.config(state="normal"))
 
-            self.menu.bind("<Unmap>", lambda x: menu_unmapped())
-
+            if platform.system() == "Windows":
+                # on windows, self.menu.post is blocking until unmap.
+                self.menu.post(event.x_root, event.y_root)
+                self.after(1, lambda: menu_unmapped())
+            else:
+                self.menu.post(event.x_root-10, event.y_root-10)
+                bindids = [[master, "<Escape>", master.bind("<Escape>", lambda x, y=self: pop_unpost(y, x))]]
+                unpost_frame.bind("<Button-1>", lambda x, y=self: pop_unpost(y, x))
+                self.menu.bind("<Unmap>", lambda x: menu_unmapped())
 
         except Exception as e:
             print(e)
         finally:
             self.menu.grab_release()
-            return "break"
+            return ""
 
 
     def _run_thread(self):
