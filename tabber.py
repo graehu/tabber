@@ -173,6 +173,7 @@ class TabButton(tkinter.Button):
 class CmdButton(tkinter.Button):
     cmd = ""
     text = ""
+    kill = None
     text_strvar = None
     tab = None
     keyname = ""
@@ -212,20 +213,22 @@ class CmdButton(tkinter.Button):
         self.bind("<Button-1>", lambda x, y=self: y.on_l_click())
         self.bind("<Shift-Button-1>", lambda x, y=self: y.on_shift_l_click())
         added_files = False
-        for path in shlex.split(cmd):
-            if os.path.exists(path) and os.path.isfile(path):
-                # self.menu.add_command(label ="edit "+os.path.basename(path), command=lambda s=self, p=path: open_file(p))
-                edit_menu.add_command(label ="edit "+os.path.basename(path), command=lambda s=self, p=path: open_file(p))
-                added_files = True
-            elif os.path.exists(path) and os.path.isdir(path):
-                try:
-                    for file in os.listdir(path):
-                        if file in cmd:
-                            path = "/".join((path,file))
-                            # self.menu.add_command(label ="edit "+file, command=lambda s=self, p=path: open_file(p))
-                            edit_menu.add_command(label ="edit "+file, command=lambda s=self, p=path: open_file(p))
-                            added_files = True
-                except Exception: pass
+        cmds = [cmd] if isinstance(cmd, str) else cmd
+        for cmd in cmds:
+            for path in shlex.split(cmd):
+                if os.path.exists(path) and os.path.isfile(path):
+                    # self.menu.add_command(label ="edit "+os.path.basename(path), command=lambda s=self, p=path: open_file(p))
+                    edit_menu.add_command(label ="edit "+os.path.basename(path), command=lambda s=self, p=path: open_file(p))
+                    added_files = True
+                elif os.path.exists(path) and os.path.isdir(path):
+                    try:
+                        for file in os.listdir(path):
+                            if file in cmd:
+                                path = "/".join((path,file))
+                                # self.menu.add_command(label ="edit "+file, command=lambda s=self, p=path: open_file(p))
+                                edit_menu.add_command(label ="edit "+file, command=lambda s=self, p=path: open_file(p))
+                                added_files = True
+                    except Exception: pass
 
         if added_files: self.menu.add_cascade(label="files", menu=edit_menu)
         self.menu.add_command(label="edit button", command=lambda s=self: open_file(s.cmd_file, s.cmd_line))
@@ -243,7 +246,7 @@ class CmdButton(tkinter.Button):
         CmdButton.all_buttons.append(self)
         # Making room for time stats.
         self.text_strvar.set(self.text+"\n--------")
-
+    def get_fullkey(self): return f"{self.tab.keyname}.{self.keyname}"
     def show_menu(self, event):
         try:
             bindids = []
@@ -304,50 +307,71 @@ class CmdButton(tkinter.Button):
             with open(log_path, "w") as writer:
                 with open(log_path, "r") as reader:
                     cmd_window = tkinter.Toplevel()
-                    cmd_window.title(self.text+" > "+self.cmd)
+                    cmd_window.title(self.text+" > "+str(self.cmd))
                     cmd_window.config(width=300, height=200)
                     txt = tkinter.Text(cmd_window)
                     txt.configure(state=tkinter.DISABLED, bg="black", fg="lightgrey")
                     txt.pack(expand=True, fill="both")
                     start_time = time.time()
-                    proc = subprocess.Popen(self.cmd, stdout=writer, stderr=subprocess.STDOUT, shell=True)
+                    proc = None
+                    sub_cmd = None
                     def stop_process():
-                        nonlocal wants_mail, proc
+                        nonlocal wants_mail, proc, sub_cmd
                         wants_mail = False
-                        kill_proc(proc)
+                        if sub_cmd and sub_cmd.kill: sub_cmd.kill()
+                        if proc: kill_proc(proc)
                     
+                    self.kill = stop_process
                     cmd_window.protocol("WM_DELETE_WINDOW", lambda: stop_process())
                     self.menu.add_separator()
                     self.menu.add_command(label ="stop process", command=lambda: stop_process())
+                    cmds = [self.cmd] if isinstance(self.cmd, str) else self.cmd
+                    def update_time(self, start_time):
+                        while self.is_running:
+                            time_text = self.text+"\n"+str(datetime.timedelta(seconds=int(time.time()-start_time)))
+                            if self.show_status and time_text != self.text_strvar.get():
+                                self.text_strvar.set(time_text)
+                            time.sleep(1)
 
-                    # Run loop
-                    current_text = self.text
-                    while proc.poll() == None:
-
-                        time_text = self.text+"\n"+str(datetime.timedelta(seconds=int(time.time()-start_time)))
-                        if self.show_status and current_text != time_text:
-                            current_text = time_text
-                            self.text_strvar.set(current_text)
-
-                        line = reader.readline(1024*4)
-                        if line:
-                            txt.configure(state=tkinter.NORMAL)
-                            while line:
-                                txt.insert(tkinter.END, line)
+                    timer_thread = threading.Thread(target=lambda x, y: update_time(x, y), args=[self, start_time])
+                    timer_thread.start()
+                    ret = 0
+                    for cmd in cmds:
+                        if ret != 0: break
+                        if not wants_mail: break
+                        if cmd.startswith("run: "):
+                            cmd = cmd.replace("run: ", "").strip()
+                            if cmd == self.get_fullkey(): continue
+                            cmd = next(filter(lambda x: x.get_fullkey() == cmd, CmdButton.all_buttons), None)
+                            if cmd:
+                                print(f"run '{cmd.text}' - '{cmd.get_fullkey()}':\n{cmd.cmd}", file=writer)
+                                sub_cmd = cmd
+                                ret = cmd.run()
+                                sub_cmd = None
+                        else:
+                            proc = subprocess.Popen(cmd, stdout=writer, stderr=subprocess.STDOUT, shell=True)
+                            # Run loop
+                            while proc.poll() == None:
                                 line = reader.readline(1024*4)
-                            txt.configure(state=tkinter.DISABLED)
-                            txt.see(tkinter.END)
+                                if line:
+                                    txt.configure(state=tkinter.NORMAL)
+                                    while line:
+                                        txt.insert(tkinter.END, line)
+                                        line = reader.readline(1024*4)
+                                    txt.configure(state=tkinter.DISABLED)
+                                    txt.see(tkinter.END)
 
-                        time.sleep(0.1)
-                        if not g_is_running: kill_proc(proc); break
+                                time.sleep(0.1)
+                                if not g_is_running: kill_proc(proc); break
 
-                    ret = proc.wait()
+                            ret = proc.wait()
+                            proc = None
                     self.menu.delete("stop process")
                     self.menu.delete(self.menu.index(tkinter.END))
                     cmd_window.destroy()
                 print("\n",file=writer)
                 print("[tabber]", file=writer)
-                print("cmd    : "+self.cmd, file=writer)
+                print("cmd    : "+str(self.cmd), file=writer)
                 print("time   : "+str(datetime.timedelta(seconds=time.time()-start_time)), file=writer)
                 print("success: "+str(bool(ret==0)) + f" ({ret})", file=writer)
                 if wants_mail and self.mail_conditions and ((ret==0) in self.mail_conditions):
@@ -362,7 +386,8 @@ class CmdButton(tkinter.Button):
                                 [self.last_log])
 
             self.is_running = False
-
+            self.kill = None
+            timer_thread.join()
             if self.show_status and ret == 0: self.config(bg="green3", activebackground="green2")
             elif self.show_status: self.config(bg="red2",activebackground="red1")
             else: self.config(bg="#e0e0e0",activebackground="#f0f0f0")
