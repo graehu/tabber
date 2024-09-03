@@ -188,6 +188,7 @@ class CmdButton(tkinter.Button):
     confirm = False
     all_buttons = []
     is_running = False
+    is_waiting = False
     conf_globals = {}
     mail_conditions = []
     def __init__(self, tab, keyname, cmd, show_status, cmd_file, cmd_line, log_dir, confirm, mail_conditions, *args, **kwargs):
@@ -326,6 +327,7 @@ class CmdButton(tkinter.Button):
                     self.menu.add_separator()
                     self.menu.add_command(label ="stop process", command=lambda: stop_process())
                     cmds = [self.cmd] if isinstance(self.cmd, str) else self.cmd
+
                     def update_time(self, start_time):
                         while self.is_running:
                             time_text = self.text+"\n"+str(datetime.timedelta(seconds=int(time.time()-start_time)))
@@ -333,25 +335,9 @@ class CmdButton(tkinter.Button):
                                 self.text_strvar.set(time_text)
                             time.sleep(1)
 
-                    timer_thread = threading.Thread(target=lambda x, y: update_time(x, y), args=[self, start_time])
-                    timer_thread.start()
-                    ret = 0
-                    for cmd in cmds:
-                        if ret != 0: break
-                        if not wants_mail: break
-                        if cmd.startswith("run: "):
-                            cmd = cmd.replace("run: ", "").strip()
-                            if cmd == self.get_fullkey(): continue
-                            cmd = next(filter(lambda x: x.get_fullkey() == cmd, CmdButton.all_buttons), None)
-                            if cmd:
-                                print(f"run '{cmd.text}' - '{cmd.get_fullkey()}':\n{cmd.cmd}", file=writer)
-                                sub_cmd = cmd
-                                ret = cmd.run()
-                                sub_cmd = None
-                        else:
-                            proc = subprocess.Popen(cmd, stdout=writer, stderr=subprocess.STDOUT, shell=True)
-                            # Run loop
-                            while proc.poll() == None:
+                    def update_window(self, txt, reader):
+                        while self.is_running and txt:
+                            try: 
                                 line = reader.readline(1024*4)
                                 if line:
                                     txt.configure(state=tkinter.NORMAL)
@@ -360,8 +346,65 @@ class CmdButton(tkinter.Button):
                                         line = reader.readline(1024*4)
                                     txt.configure(state=tkinter.DISABLED)
                                     txt.see(tkinter.END)
+                                time.sleep(.1)
+                            except tkinter.TclError: break # txt got cleaned up.
+                            except IOError: break # the file was closed.
+                            except Exception as e: print(e); break # not sure what happened, print it.
+                    
+                    
+                    timer_thread = threading.Thread(target=update_time, args=[self, start_time])
+                    window_thread = threading.Thread(target=update_window, args=[self, txt, reader])
+                    timer_thread.start()
+                    window_thread.start()
 
-                                time.sleep(0.1)
+                    ret = 0
+                    for cmd in cmds:
+                        if ret != 0: break
+                        if not wants_mail: break
+                        # bunch of code duplication here.
+                        if cmd.startswith("run:"):
+                            cmd = cmd.replace("run:", "").strip()
+                            if cmd == self.get_fullkey(): continue
+                            cmd = next(filter(lambda x: x.get_fullkey() == cmd, CmdButton.all_buttons), None)
+                            if cmd:
+                                print(f"run: '{cmd.text}' - '{cmd.get_fullkey()}'", file=writer, flush=True)
+                                sub_cmd = cmd
+                                ret = cmd.run()
+                                sub_cmd = None
+                        
+                        elif cmd.startswith("queue:"):
+                            cmd = cmd.replace("queue:", "").strip()
+                            if cmd == self.get_fullkey(): continue
+                            cmd = next(filter(lambda x: x.get_fullkey() == cmd, CmdButton.all_buttons), None)
+                            if cmd:
+                                print(f"queue: '{cmd.text}' - '{cmd.get_fullkey()}'", file=writer, flush=True)
+                                cmd.add_to_queue()
+                        
+                        elif cmd.startswith("wait:"):
+                            cmd = cmd.replace("wait:", "").strip()
+                            if cmd == self.get_fullkey(): continue
+                            cmd = next(filter(lambda x: x.get_fullkey() == cmd, CmdButton.all_buttons), None)
+                            if cmd:
+                                print(f"wait: '{cmd.text}' - '{cmd.get_fullkey()}'", file=writer, flush=True)
+                                cmd.add_to_queue()
+                                self.is_waiting = True
+                                while cmd in g_button_queue or cmd.is_running: time.sleep(1)
+                                self.is_waiting = False
+                        
+                        else:
+                            proc = subprocess.Popen(cmd, stdout=writer, stderr=subprocess.STDOUT, shell=True)
+                            # Run loop
+                            while proc.poll() == None:
+                                # line = reader.readline(1024*4)
+                                # if line:
+                                #     txt.configure(state=tkinter.NORMAL)
+                                #     while line:
+                                #         txt.insert(tkinter.END, line)
+                                #         line = reader.readline(1024*4)
+                                #     txt.configure(state=tkinter.DISABLED)
+                                #     txt.see(tkinter.END)
+
+                                time.sleep(0.5)
                                 if not g_is_running: kill_proc(proc); break
 
                             ret = proc.wait()
@@ -388,6 +431,7 @@ class CmdButton(tkinter.Button):
             self.is_running = False
             self.kill = None
             timer_thread.join()
+            window_thread.join()
             if self.show_status and ret == 0: self.config(bg="green3", activebackground="green2")
             elif self.show_status: self.config(bg="red2",activebackground="red1")
             else: self.config(bg="#e0e0e0",activebackground="#f0f0f0")
@@ -414,6 +458,11 @@ class CmdButton(tkinter.Button):
             self.thread.start()
         return "break"
 
+    def add_to_queue(self):
+        if self.thread == None or not self.thread.is_alive():
+            if not self in g_button_queue:
+                g_button_queue.append(self)
+                self.config(bg="yellow", activebackground="lightyellow")
 
     def on_shift_l_click(self):
         if self.thread == None or not self.thread.is_alive():
@@ -709,7 +758,7 @@ def button_queue():
     global g_button_queue, g_is_running
     while g_is_running:
         time.sleep(0.5)
-        if g_button_queue and not any([b.is_running for b in CmdButton.all_buttons]):
+        if g_button_queue and not any([b.is_running and not b.is_waiting for b in CmdButton.all_buttons]):
             button = g_button_queue.pop(0)
             g_show_tab(button.tab)
             if button.run() != 0:
