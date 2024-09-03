@@ -184,7 +184,7 @@ class CmdButton(tkinter.Button):
     menu = None
     log_fmt = ""
     last_log = ""
-    last_ret = 0
+    last_ret = -1
     confirm = False
     all_buttons = []
     is_running = False
@@ -296,6 +296,7 @@ class CmdButton(tkinter.Button):
         if self.confirm and not tkinter.messagebox.askyesno("Confirm", f"Are you sure you want to run '{self.text}'?"): return
         if self.cget("state") != "disabled":
             print(f"running '{self.text}': {self.cmd}")
+            self.last_ret = -1
             self.is_running = True
             wants_mail = True
             self.config(state="disabled")
@@ -390,20 +391,12 @@ class CmdButton(tkinter.Button):
                                 self.is_waiting = True
                                 while cmd in g_button_queue or cmd.is_running: time.sleep(1)
                                 self.is_waiting = False
+                                ret = cmd.last_ret
                         
                         else:
                             proc = subprocess.Popen(cmd, stdout=writer, stderr=subprocess.STDOUT, shell=True)
                             # Run loop
                             while proc.poll() == None:
-                                # line = reader.readline(1024*4)
-                                # if line:
-                                #     txt.configure(state=tkinter.NORMAL)
-                                #     while line:
-                                #         txt.insert(tkinter.END, line)
-                                #         line = reader.readline(1024*4)
-                                #     txt.configure(state=tkinter.DISABLED)
-                                #     txt.see(tkinter.END)
-
                                 time.sleep(0.5)
                                 if not g_is_running: kill_proc(proc); break
 
@@ -461,12 +454,14 @@ class CmdButton(tkinter.Button):
     def add_to_queue(self):
         if self.thread == None or not self.thread.is_alive():
             if not self in g_button_queue:
+                self.last_ret = -1
                 g_button_queue.append(self)
                 self.config(bg="yellow", activebackground="lightyellow")
 
     def on_shift_l_click(self):
         if self.thread == None or not self.thread.is_alive():
             if not self in g_button_queue:
+                self.last_ret = -1
                 g_button_queue.append(self)
                 self.config(bg="yellow", activebackground="lightyellow")
             else:
