@@ -757,17 +757,18 @@ def button_queue():
             button = g_button_queue.pop(0)
             g_show_tab(button.tab)
             if button.run() != 0:
-                choice = tkinter.messagebox.askquestion("Run Failure",
-                                f"Button '{button.keyname}' returned non zero!\n\n'Abort' the task queue\n'Retry' this task and continue the queue\n'Ignore' this failure and continue the queue.",
-                                type=tkinter.messagebox.ABORTRETRYIGNORE, icon=tkinter.messagebox.ERROR)
-                
-                if choice == "retry":
-                    g_button_queue.insert(0, button)
-                elif choice == "ignore": pass
-                elif choice == "abort":
-                    for button in g_button_queue:
-                        button.config(bg="#e0e0e0",activebackground="#f0f0f0")
-                        g_button_queue = []                
+                if g_button_queue:
+                    choice = tkinter.messagebox.askquestion("Run Failure",
+                                    f"Button '{button.keyname}' returned non zero!\n\n'Abort' the task queue\n'Retry' this task and continue the queue\n'Ignore' this failure and continue the queue.",
+                                    type=tkinter.messagebox.ABORTRETRYIGNORE, icon=tkinter.messagebox.ERROR)
+                    
+                    if choice == "retry":
+                        g_button_queue.insert(0, button)
+                    elif choice == "ignore": pass
+                    elif choice == "abort":
+                        for button in g_button_queue:
+                            button.config(bg="#e0e0e0",activebackground="#f0f0f0")
+                            g_button_queue = []                
 
 
 
