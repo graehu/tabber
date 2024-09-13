@@ -24,9 +24,11 @@ html = """
   <body>
     Hello,
     <br>
-    button: {button}<br>
-    result: {status}<br>
-    time elapsed: {time_taken}<br>
+    button   : {button}<br>
+    <pre>{cmd}</pre>
+    result   : {status}<br>
+    duration : {time_taken}<br>
+    span     : {start} - {end}<br>
     <br>
     Thanks,<br>
     Tabber
@@ -405,10 +407,15 @@ class CmdButton(tkinter.Button):
                     self.menu.delete("stop process")
                     self.menu.delete(self.menu.index(tkinter.END))
                     cmd_window.destroy()
+                end_time = time.time()
+                time_str = f"{datetime.datetime.fromtimestamp(end_time)}"
+                
                 print("\n",file=writer)
                 print("[tabber]", file=writer)
                 print("cmd    : "+str(self.cmd), file=writer)
-                print("time   : "+str(datetime.timedelta(seconds=time.time()-start_time)), file=writer)
+                print("time   : "+f"{datetime.timedelta(seconds=end_time-start_time)}", file=writer)
+                print("start  : "+datetime.datetime.fromtimestamp(start_time).strftime("%Y/%m/%d %H:%M:%S"), file=writer)
+                print("end    : "+datetime.datetime.fromtimestamp(end_time).strftime("%Y/%m/%d %H:%M:%S"), file=writer)
                 print("success: "+str(bool(ret==0)) + f" ({ret})", file=writer)
                 if wants_mail and self.mail_conditions and ((ret==0) in self.mail_conditions):
                     send_report(self.conf_globals["mail_login"],
@@ -416,8 +423,11 @@ class CmdButton(tkinter.Button):
                                 self.conf_globals["mail_to"],
                                 {
                                     "button": self.text,
+                                    "cmd"   : str(self.cmd),
                                     "status": str(bool(ret==0)) + f" ({ret})",
-                                    "time_taken": str(datetime.timedelta(seconds=time.time()-start_time))
+                                    "start" : datetime.datetime.fromtimestamp(start_time).strftime("%Y/%m/%d %H:%M:%S"),
+                                    "end"   : datetime.datetime.fromtimestamp(end_time).strftime("%Y/%m/%d %H:%M:%S"),
+                                    "time_taken": f"{datetime.timedelta(seconds=end_time-start_time)}"
                                 },
                                 [self.last_log])
 
