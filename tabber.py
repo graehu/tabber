@@ -114,9 +114,9 @@ def open_file(in_path, line=0):
     if os.path.isfile(in_path):
         if platform.system() == 'Windows':
             if "code" in editor:
-                subprocess.run([editor, "--goto", path+f":{line}:0"], creationflags=subprocess.CREATE_NO_WINDOW)
+                subprocess.run(["start", editor, "--goto", path+f":{line}:0"], creationflags=subprocess.CREATE_NO_WINDOW)
             else:
-                subprocess.run([editor, path], creationflags=subprocess.CREATE_NO_WINDOW)
+                subprocess.run(["start", editor, path], creationflags=subprocess.CREATE_NO_WINDOW)
         else:
             if "/code" in editor:
                 subprocess.run([editor, "--goto", path+f":{line}:0"])
