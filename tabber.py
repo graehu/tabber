@@ -374,6 +374,7 @@ class CmdButton(tkinter.Button):
                                 sub_cmd = cmd
                                 ret = cmd.run()
                                 sub_cmd = None
+                            elif not tkinter.messagebox.askyesno("Run Failure", "continue?"): break
                         
                         elif cmd.startswith("queue:"):
                             cmd = cmd.replace("queue:", "").strip()
@@ -382,7 +383,8 @@ class CmdButton(tkinter.Button):
                             if cmd:
                                 print(f"queue: '{cmd.text}' - '{cmd.get_fullkey()}'", file=writer, flush=True)
                                 cmd.add_to_queue()
-                        
+                            elif not tkinter.messagebox.askyesno("Queue Failure", "continue?"): break
+                            
                         elif cmd.startswith("wait:"):
                             cmd = cmd.replace("wait:", "").strip()
                             if cmd == self.get_fullkey(): continue
@@ -394,6 +396,7 @@ class CmdButton(tkinter.Button):
                                 while cmd in g_button_queue or cmd.is_running: time.sleep(1)
                                 self.is_waiting = False
                                 ret = cmd.last_ret
+                            elif not tkinter.messagebox.askyesno("Wait Failure", "continue?"): break
                         
                         else:
                             proc = subprocess.Popen(cmd, stdout=writer, stderr=subprocess.STDOUT, shell=True)
@@ -777,6 +780,7 @@ def button_queue():
                     elif choice == "ignore": pass
                     elif choice == "abort":
                         for button in g_button_queue:
+                            # todo: buttons need to be marked as aborted.
                             button.config(bg="#e0e0e0",activebackground="#f0f0f0")
                             g_button_queue = []                
 
