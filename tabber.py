@@ -185,6 +185,7 @@ class CmdButton(tkinter.Button):
     cmd_line = 0
     menu = None
     log_fmt = ""
+    log_cmds = False
     last_log = ""
     last_ret = -1
     confirm = False
@@ -193,7 +194,7 @@ class CmdButton(tkinter.Button):
     is_waiting = False
     conf_globals = {}
     mail_conditions = []
-    def __init__(self, tab, keyname, cmd, show_status, cmd_file, cmd_line, log_dir, confirm, mail_conditions, *args, **kwargs):
+    def __init__(self, tab, keyname, cmd, show_status, cmd_file, cmd_line, log_dir, log_cmds, confirm, mail_conditions, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.text = self.cget("text")
         self.tab = tab
@@ -202,6 +203,7 @@ class CmdButton(tkinter.Button):
         self.show_status = show_status
         self.cmd_file = cmd_file
         self.cmd_line = cmd_line
+        self.log_cmds = log_cmds
         self.menu = tkinter.Menu(self, tearoff = 0)
         self.text_strvar = tkinter.StringVar(self, self.text)
         self.config(textvariable=self.text_strvar)
@@ -399,6 +401,7 @@ class CmdButton(tkinter.Button):
                             elif not tkinter.messagebox.askyesno("Wait Failure", "continue?"): break
                         
                         else:
+                            if self.log_cmds: print(f"tabber: running '{cmd}'", file=writer, flush=True)
                             proc = subprocess.Popen(cmd, stdout=writer, stderr=subprocess.STDOUT, shell=True)
                             # Run loop
                             while proc.poll() == None:
@@ -676,12 +679,13 @@ def build_widgets():
                 toml_file = section["origin_toml"] if "origin_toml" in section else settings_file
                 cmd = section["command"] if "command" in section else "no_command"
                 show_status = section["show_status"] if "show_status" in section else (defaults["show_status"] if "show_status" in defaults else False)
+                log_cmds = section["log_commands"] if "log_commands" in section else False
                 name = section["name"] if "name" in section else sec
                 confirm = section["confirm"] if "confirm" in section else (defaults["confirm"] if "confirm" in defaults else True)
                 mail_conditions = section["mail_conditions"] if "mail_conditions" in section else (defaults["mail_conditions"] if "mail_conditions" in defaults else [])
                 icon_subsample = section["icon_subsample"] if "icon_subsample" in section else (1,1)
                 image = get_image(icon, icon_subsample)
-                button = CmdButton(tab_button, sec, cmd, show_status, toml_file, cmd_line, log_dir+sec, confirm, mail_conditions, butts, text=name, image=image, compound="left")
+                button = CmdButton(tab_button, sec, cmd, show_status, toml_file, cmd_line, log_dir+sec, log_cmds, confirm, mail_conditions, butts, text=name, image=image, compound="left")
                 configs = {}
                 for k in section:
                     if k in ["command", "icon", "name", "image", "confirm"]: continue
