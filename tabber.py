@@ -679,7 +679,7 @@ def build_widgets():
                 toml_file = section["origin_toml"] if "origin_toml" in section else settings_file
                 cmd = section["command"] if "command" in section else "no_command"
                 show_status = section["show_status"] if "show_status" in section else (defaults["show_status"] if "show_status" in defaults else False)
-                log_cmds = section["log_commands"] if "log_commands" in section else False
+                log_cmds = section["log_commands"] if "log_commands" in section else (defaults["log_commands"] if "log_commands" in defaults else False)
                 name = section["name"] if "name" in section else sec
                 confirm = section["confirm"] if "confirm" in section else (defaults["confirm"] if "confirm" in defaults else True)
                 mail_conditions = section["mail_conditions"] if "mail_conditions" in section else (defaults["mail_conditions"] if "mail_conditions" in defaults else [])
