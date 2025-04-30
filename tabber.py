@@ -674,17 +674,22 @@ def build_widgets():
         for sec in tab:
             section = tab[sec]
             if isinstance(section, dict):
-                icon = section["icon"] if "icon" in section else (defaults["icon"] if "icon" in defaults else "")
+                
                 cmd_line = section["line"] if "line" in section else 0
                 toml_file = section["origin_toml"] if "origin_toml" in section else settings_file
                 cmd = section["command"] if "command" in section else "no_command"
-                show_status = section["show_status"] if "show_status" in section else (defaults["show_status"] if "show_status" in defaults else False)
-                log_cmds = section["log_commands"] if "log_commands" in section else (defaults["log_commands"] if "log_commands" in defaults else False)
                 name = section["name"] if "name" in section else sec
-                confirm = section["confirm"] if "confirm" in section else (defaults["confirm"] if "confirm" in defaults else True)
-                mail_conditions = section["mail_conditions"] if "mail_conditions" in section else (defaults["mail_conditions"] if "mail_conditions" in defaults else [])
-                icon_subsample = section["icon_subsample"] if "icon_subsample" in section else (1,1)
                 image = get_image(icon, icon_subsample)
+                icon_subsample = section["icon_subsample"] if "icon_subsample" in section else (1,1)
+                
+                # handle buttons with buttons_ defaults.
+                def get_button_var(key, fallback): return section[key] if key in section else (defaults[key] if key in defaults else fallback)
+                icon = get_button_var("icon", "")
+                show_status = get_button_var("show_status", False)
+                log_cmds = get_button_var("log_commands", False)
+                confirm = get_button_var("confirm", True)
+                mail_conditions = get_button_var("mail_conditions", [])
+
                 button = CmdButton(tab_button, sec, cmd, show_status, toml_file, cmd_line, log_dir+sec, log_cmds, confirm, mail_conditions, butts, text=name, image=image, compound="left")
                 configs = {}
                 for k in section:
