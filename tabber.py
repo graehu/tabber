@@ -144,11 +144,12 @@ class ToolTip(object):
         x = x + self.widget.winfo_rootx()
         y = y + cy + self.widget.winfo_rooty() + self.widget.winfo_height()
         self.tipwindow = tw = tkinter.Toplevel(self.widget)
+        numlines = len(text.splitlines())
         tw.wm_overrideredirect(1)
-        tw.wm_geometry("%dx%d+%d+%d" % (self.widget.winfo_width(), 16, x, y))
         label = tkinter.Label(tw, text=self.text, justify=tkinter.LEFT,
                       background="#ffffe0", relief=tkinter.SOLID, borderwidth=1,
                       font=("tahoma", "8", "normal"))
+        tw.wm_geometry("%dx%d+%d+%d" % (self.widget.winfo_width(), 13*numlines, x, y))
         label.pack(ipadx=1, fill="both")
 
     def hidetip(self):
@@ -159,7 +160,7 @@ class ToolTip(object):
 
 def CreateToolTip(widget, text):
     toolTip = ToolTip(widget) 
-    widget.bind('<Enter>', lambda x: toolTip.showtip(text))
+    widget.bind('<Enter>', lambda x: toolTip.showtip(text()))
     widget.bind('<Leave>', lambda x: toolTip.hidetip())
 
 
@@ -674,14 +675,7 @@ def build_widgets():
         for sec in tab:
             section = tab[sec]
             if isinstance(section, dict):
-                
-                cmd_line = section["line"] if "line" in section else 0
-                toml_file = section["origin_toml"] if "origin_toml" in section else settings_file
-                cmd = section["command"] if "command" in section else "no_command"
-                name = section["name"] if "name" in section else sec
-                image = get_image(icon, icon_subsample)
-                icon_subsample = section["icon_subsample"] if "icon_subsample" in section else (1,1)
-                
+
                 # handle buttons with buttons_ defaults.
                 def get_button_var(key, fallback): return section[key] if key in section else (defaults[key] if key in defaults else fallback)
                 icon = get_button_var("icon", "")
@@ -689,6 +683,22 @@ def build_widgets():
                 log_cmds = get_button_var("log_commands", False)
                 confirm = get_button_var("confirm", True)
                 mail_conditions = get_button_var("mail_conditions", [])
+
+
+                # no defaults
+                cmd_line = section["line"] if "line" in section else 0
+                toml_file = section["origin_toml"] if "origin_toml" in section else settings_file
+                cmd = section["command"] if "command" in section else "no_command"
+                if "tip" in section:
+                    tip = section["tip"]
+                    tip = lambda x=tip: subprocess.check_output(x, shell=True).decode().strip()
+                else:
+                    tip = lambda:str(cmd)
+                name = section["name"] if "name" in section else sec
+                icon_subsample = section["icon_subsample"] if "icon_subsample" in section else (1,1)
+                image = get_image(icon, icon_subsample)
+
+                
 
                 button = CmdButton(tab_button, sec, cmd, show_status, toml_file, cmd_line, log_dir+sec, log_cmds, confirm, mail_conditions, butts, text=name, image=image, compound="left")
                 configs = {}
@@ -700,8 +710,9 @@ def build_widgets():
                 except Exception as e:
                     open_file(toml_file)
                     tkinter.messagebox.showerror(f"ERROR '[{tab_name}.{sec}]'", str(e))
-                CreateToolTip(button, cmd)
+                CreateToolTip(button, tip)
                 tab_butts.append(button)
+                
             elif sec.startswith("buttons_"): defaults[sec.replace("buttons_", "")] = section
             elif sec == "name": tab_name = section
             elif sec == "icon": tab_icon = section
