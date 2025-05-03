@@ -22,7 +22,7 @@ import email.mime.application as mime_application
 html = """
 <html>
   <body>
-    Hello,
+    Hello from {name},
     <br>
     button   : {button}<br>
     <pre>{cmd}</pre>
@@ -41,7 +41,7 @@ def send_report(login, host, recipients, report, attachments=None):
         print("failed to send mail, required arguments not given.")
         return
     message = mime_multipart.MIMEMultipart('html')
-    message["Subject"] = f"Tabber - {report['button']} - {report['status']}"
+    message["Subject"] = f"Tabber - {report['status']} - {report['button']}"
     message["From"] = login[0]
     message["To"] = ", ".join(recipients)
 
@@ -420,6 +420,7 @@ class CmdButton(tkinter.Button):
                 print("\n",file=writer)
                 print("[tabber]", file=writer)
                 print("cmd    : "+str(self.cmd), file=writer)
+                print("machine: "+platform.node(), file=writer)
                 print("time   : "+f"{datetime.timedelta(seconds=end_time-start_time)}", file=writer)
                 print("start  : "+datetime.datetime.fromtimestamp(start_time).strftime("%Y/%m/%d %H:%M:%S"), file=writer)
                 print("end    : "+datetime.datetime.fromtimestamp(end_time).strftime("%Y/%m/%d %H:%M:%S"), file=writer)
@@ -429,6 +430,7 @@ class CmdButton(tkinter.Button):
                                 self.conf_globals["mail_host"],
                                 self.conf_globals["mail_to"],
                                 {
+                                    "name"  : platform.node(),
                                     "button": self.text,
                                     "cmd"   : str(self.cmd),
                                     "status": str(bool(ret==0)) + f" ({ret})",
