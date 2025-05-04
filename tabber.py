@@ -195,7 +195,8 @@ class CmdButton(tkinter.Button):
     is_waiting = False
     conf_globals = {}
     mail_conditions = []
-    def __init__(self, tab, keyname, cmd, show_status, cmd_file, cmd_line, log_dir, log_cmds, confirm, mail_conditions, *args, **kwargs):
+    mail_machines = []
+    def __init__(self, tab, keyname, cmd, show_status, cmd_file, cmd_line, log_dir, log_cmds, confirm, mail_conditions, mail_machines, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.text = self.cget("text")
         self.tab = tab
@@ -207,6 +208,7 @@ class CmdButton(tkinter.Button):
         self.log_cmds = log_cmds
         self.menu = tkinter.Menu(self, tearoff = 0)
         self.text_strvar = tkinter.StringVar(self, self.text)
+        self.mail_machines = mail_machines
         self.config(textvariable=self.text_strvar)
         edit_menu = tkinter.Menu(self.menu, tearoff = 0)
         # self.menu.add_checkbutton(label="checkbutton")
@@ -416,16 +418,16 @@ class CmdButton(tkinter.Button):
                     cmd_window.destroy()
                 end_time = time.time()
                 time_str = f"{datetime.datetime.fromtimestamp(end_time)}"
-                
+                machine = platform.node()
                 print("\n",file=writer)
                 print("[tabber]", file=writer)
                 print("cmd    : "+str(self.cmd), file=writer)
-                print("machine: "+platform.node(), file=writer)
+                print("machine: "+machine, file=writer)
                 print("time   : "+f"{datetime.timedelta(seconds=end_time-start_time)}", file=writer)
                 print("start  : "+datetime.datetime.fromtimestamp(start_time).strftime("%Y/%m/%d %H:%M:%S"), file=writer)
                 print("end    : "+datetime.datetime.fromtimestamp(end_time).strftime("%Y/%m/%d %H:%M:%S"), file=writer)
                 print("success: "+str(bool(ret==0)) + f" ({ret})", file=writer)
-                if wants_mail and self.mail_conditions and ((ret==0) in self.mail_conditions):
+                if wants_mail and self.mail_conditions and ((ret==0) in self.mail_conditions) and (not mail_machines or machine in mail_machines):
                     send_report(self.conf_globals["mail_login"],
                                 self.conf_globals["mail_host"],
                                 self.conf_globals["mail_to"],
@@ -542,6 +544,8 @@ g_is_running = True
 def build_widgets():
     global g_show_tab
     global included
+    # todo: if your tabber is complicated, this can take a long time.
+    # ----: make it so you don't need to destroy everything, just the affected tabs.
     CmdButton.all_buttons.clear()
     for c in master.winfo_children(): c.destroy()
     settings = {"includes": [settings_file]}
@@ -685,6 +689,7 @@ def build_widgets():
                 log_cmds = get_button_var("log_commands", False)
                 confirm = get_button_var("confirm", True)
                 mail_conditions = get_button_var("mail_conditions", [])
+                mail_machines = get_button_var("mail_machines", [])
 
 
                 # no defaults
@@ -702,7 +707,7 @@ def build_widgets():
 
                 
 
-                button = CmdButton(tab_button, sec, cmd, show_status, toml_file, cmd_line, log_dir+sec, log_cmds, confirm, mail_conditions, butts, text=name, image=image, compound="left")
+                button = CmdButton(tab_button, sec, cmd, show_status, toml_file, cmd_line, log_dir+sec, log_cmds, confirm, mail_conditions, mail_machines, butts, text=name, image=image, compound="left")
                 configs = {}
                 for k in section:
                     if k in ["command", "icon", "name", "image", "confirm"]: continue
