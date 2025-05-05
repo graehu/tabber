@@ -18,6 +18,7 @@ import smtplib
 import email.mime.text as mime_text
 import email.mime.multipart as mime_multipart
 import email.mime.application as mime_application
+# from timeit import default_timer as timer
 
 html = """
 <html>
@@ -534,7 +535,7 @@ master=tkinter.Tk()
 master.geometry("350x275")
 master.minsize(256, 128+64)
 tab_num = 0
-included = []
+included = {}
 img_map = { "": None }
 g_show_tab = None # TODO: this is a bit of a hack, too much stuff happens inside of build_widgets, fix later.
 g_button_queue = []
@@ -544,22 +545,27 @@ g_is_running = True
 def build_widgets():
     global g_show_tab
     global included
+    # build_time = timer()
     # todo: if your tabber is complicated, this can take a long time.
     # ----: make it so you don't need to destroy everything, just the affected tabs.
+    # ----: this is tricky because so much state is inside the cmd buttons.
+    # ----: cases where we buttons_ from another .toml could be a problem
+    
     CmdButton.all_buttons.clear()
     for c in master.winfo_children(): c.destroy()
+        
     settings = {"includes": [settings_file]}
     curdir = os.path.dirname(settings_file)
     os.chdir(curdir)
     old_included = included
-    included = []
+    included = {}
     try:
         while "includes" in settings:
             inc_settings = []
             for include in settings["includes"]:
                 include = os.path.abspath(include)
                 if not include in included:
-                    included.append(include)
+                    included[include] = {}
                     print("loading "+include)
                     inc = tomllib.load(open(include, "rb"))
                     recursive_add_keyval(inc, "origin_toml", include)
@@ -595,7 +601,7 @@ def build_widgets():
         master.configure(bg="#d9d9d9")
         if os.path.exists(include):
             open_file(include, line)
-            if not include in old_included: old_included.append(include)
+            if not include in old_included: old_included[include] = {}
 
         master.after(100, lambda x: master.lift())
         included = old_included
@@ -623,6 +629,7 @@ def build_widgets():
     def show_tab(widget : tkinter.Widget):
         nonlocal current_tab
         global tab_num
+        # show_time = timer()
         if current_tab: current_tab.configure(relief=tkinter.RAISED)
         current_tab = widget
         tab_num = tabs.winfo_children().index(current_tab)
@@ -656,6 +663,7 @@ def build_widgets():
             spacer.config(state="disabled")
 
         master.after(1, lambda widget=widget:widget.configure(relief=tkinter.RIDGE))
+        # print(f"show_tab {timer()-show_time}")
 
     g_show_tab = show_tab
     tab_dict = {}
@@ -749,6 +757,8 @@ def build_widgets():
     else:
         show_tab(tabs.winfo_children()[0])
 
+    # print(f"build_widgets {timer()-build_time}")
+    
     return tab_dict
 
 def run_buttons(in_tabs):
@@ -819,17 +829,17 @@ run_buttons(tab_dict)
 queue_thread = threading.Thread(target=button_queue)
 queue_thread.start()
 
-mod_times = {}
 def watch_includes():
     global included
+    global do_oncey
     wants_build = False
     for inc in included:
-        if inc in mod_times:
-            if mod_times[inc] != os.path.getmtime(inc):
-                mod_times[inc] = os.path.getmtime(inc)
+        if "mod_time" in included[inc]:
+            if included[inc]["mod_time"] != os.path.getmtime(inc):
+                included[inc]["mod_time"] = os.path.getmtime(inc)
                 wants_build = True
         else:
-            mod_times[inc] = os.path.getmtime(inc)
+            included[inc]["mod_time"] = os.path.getmtime(inc)
     if wants_build:
         if not any([b.is_running for b in CmdButton.all_buttons]):
             build_widgets()
