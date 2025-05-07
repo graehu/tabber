@@ -197,7 +197,7 @@ class CmdButton(tkinter.Button):
     conf_globals = {}
     mail_conditions = []
     mail_machines = []
-    def __init__(self, tab, keyname, cmd, show_status, cmd_file, cmd_line, log_dir, log_cmds, confirm, mail_conditions, mail_machines, *args, **kwargs):
+    def __init__(self, tab, keyname, cmd, env_vars, show_status, cmd_file, cmd_line, log_dir, log_cmds, confirm, mail_conditions, mail_machines, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.text = self.cget("text")
         self.tab = tab
@@ -216,7 +216,17 @@ class CmdButton(tkinter.Button):
         # self.menu.add_radiobutton(label="radiobutton")
         # self.menu.add_separator()
         self.conf_globals = g_conf_globals.copy()
+        for k,v in self.conf_globals.items():
+            if k not in env_vars and k.startswith("env_"):
+                env_vars[k.replace("env_", "")] = v
         self.mail_conditions = mail_conditions
+
+        if isinstance(self.cmd, list):
+            for k,v in env_vars.items():
+                self.cmd = [c.replace("{"+k+"}", v) for c in self.cmd]
+        else:
+            for k,v in env_vars.items():
+                self.cmd = self.cmd.replace("{"+k+"}", v)
 
         # self.configure(command=lambda y=self: y.on_l_click())
         self.bind("<Button-1>", lambda x, y=self: y.on_l_click())
@@ -433,7 +443,7 @@ class CmdButton(tkinter.Button):
                                 self.conf_globals["mail_host"],
                                 self.conf_globals["mail_to"],
                                 {
-                                    "name"  : platform.node(),
+                                    "name"  : machine,
                                     "button": self.text,
                                     "cmd"   : str(self.cmd),
                                     "status": str(bool(ret==0)) + f" ({ret})",
@@ -677,6 +687,7 @@ def build_widgets():
     def create_tab(tab_name, tab):
         log_dir = "logs/"+tab_name+"/"
         keyname = tab_name
+        tab_envs = {}
         tab_icon = ""
         tab_icon_subsample = (1,1)
         tab_button = TabButton(keyname, tabs)
@@ -689,7 +700,6 @@ def build_widgets():
         for sec in tab:
             section = tab[sec]
             if isinstance(section, dict):
-
                 # handle buttons with buttons_ defaults.
                 def get_button_var(key, fallback): return section[key] if key in section else (defaults[key] if key in defaults else fallback)
                 icon = get_button_var("icon", "")
@@ -699,23 +709,20 @@ def build_widgets():
                 mail_conditions = get_button_var("mail_conditions", [])
                 mail_machines = get_button_var("mail_machines", [])
 
-
                 # no defaults
                 cmd_line = section["line"] if "line" in section else 0
                 toml_file = section["origin_toml"] if "origin_toml" in section else settings_file
                 cmd = section["command"] if "command" in section else "no_command"
+                
                 if "tip" in section:
                     tip = section["tip"]
                     tip = lambda x=tip: subprocess.check_output(x, shell=True).decode().strip()
                 else:
-                    tip = lambda:str(cmd)
+                    tip = lambda x=cmd: str(x)
                 name = section["name"] if "name" in section else sec
                 icon_subsample = section["icon_subsample"] if "icon_subsample" in section else (1,1)
                 image = get_image(icon, icon_subsample)
-
-                
-
-                button = CmdButton(tab_button, sec, cmd, show_status, toml_file, cmd_line, log_dir+sec, log_cmds, confirm, mail_conditions, mail_machines, butts, text=name, image=image, compound="left")
+                button = CmdButton(tab_button, sec, cmd, tab_envs, show_status, toml_file, cmd_line, log_dir+sec, log_cmds, confirm, mail_conditions, mail_machines, butts, text=name, image=image, compound="left")
                 configs = {}
                 for k in section:
                     if k in ["command", "icon", "name", "image", "confirm"]: continue
@@ -729,6 +736,7 @@ def build_widgets():
                 tab_butts.append(button)
                 
             elif sec.startswith("buttons_"): defaults[sec.replace("buttons_", "")] = section
+            elif sec.startswith("env_"): tab_envs[sec.replace("env_", "")] = section
             elif sec == "name": tab_name = section
             elif sec == "icon": tab_icon = section
             elif sec == "icon_subsample": tab_icon = section
