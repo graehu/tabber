@@ -438,7 +438,7 @@ class CmdButton(tkinter.Button):
                 print("start  : "+datetime.datetime.fromtimestamp(start_time).strftime("%Y/%m/%d %H:%M:%S"), file=writer)
                 print("end    : "+datetime.datetime.fromtimestamp(end_time).strftime("%Y/%m/%d %H:%M:%S"), file=writer)
                 print("success: "+str(bool(ret==0)) + f" ({ret})", file=writer)
-                if wants_mail and self.mail_conditions and ((ret==0) in self.mail_conditions) and (not mail_machines or machine in mail_machines):
+                if wants_mail and self.mail_conditions and ((ret==0) in self.mail_conditions) and (not self.mail_machines or machine in self.mail_machines):
                     send_report(self.conf_globals["mail_login"],
                                 self.conf_globals["mail_host"],
                                 self.conf_globals["mail_to"],
