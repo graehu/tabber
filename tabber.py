@@ -544,6 +544,11 @@ settings_file = os.path.abspath(settings_file)
 master=tkinter.Tk()
 master.geometry("350x275")
 master.minsize(256, 128+64)
+
+is_focused = tkinter.BooleanVar()
+master.bind('<FocusIn>', lambda _: is_focused.set(True))
+master.bind('<FocusOut>', lambda _: is_focused.set(False))
+
 tab_num = 0
 included = {}
 img_map = { "": None }
@@ -813,7 +818,8 @@ def button_queue():
         time.sleep(0.5)
         if g_button_queue and not any([b.is_running and not b.is_waiting for b in CmdButton.all_buttons]):
             button = g_button_queue.pop(0)
-            g_show_tab(button.tab)
+            if not is_focused.get():
+                g_show_tab(button.tab)
             if button.run() != 0:
                 if g_button_queue:
                     choice = tkinter.messagebox.askquestion("Run Failure",
