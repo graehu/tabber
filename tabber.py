@@ -218,7 +218,7 @@ class CmdButton(tkinter.Button):
         self.conf_globals = g_conf_globals.copy()
         for k,v in self.conf_globals.items():
             if k not in env_vars and k.startswith("env_"):
-                env_vars[k.replace("env_", "")] = v
+                env_vars[k] = v
         self.mail_conditions = mail_conditions
 
         if isinstance(self.cmd, list):
@@ -306,7 +306,7 @@ class CmdButton(tkinter.Button):
             print(e)
         finally:
             self.menu.grab_release()
-            return ""
+        return ""
 
 
     def _run_thread(self):
@@ -560,12 +560,13 @@ g_is_running = True
 def build_widgets():
     global g_show_tab
     global included
+    global img_map
     # build_time = timer()
     # todo: if your tabber is complicated, this can take a long time.
     # ----: make it so you don't need to destroy everything, just the affected tabs.
     # ----: this is tricky because so much state is inside the cmd buttons.
     # ----: cases where we buttons_ from another .toml could be a problem
-    
+    img_map = { "": None }
     CmdButton.all_buttons.clear()
     for c in master.winfo_children(): c.destroy()
         
@@ -706,18 +707,22 @@ def build_widgets():
             section = tab[sec]
             if isinstance(section, dict):
                 # handle buttons with buttons_ defaults.
-                def get_button_var(key, fallback): return section[key] if key in section else (defaults[key] if key in defaults else fallback)
+                handled_keys = []
+                def get_button_var(key, fallback, use_defaults = True):
+                    nonlocal handled_keys
+                    handled_keys.append(key)
+                    return section[key] if key in section else (defaults[key] if use_defaults and key in defaults else fallback)
                 icon = get_button_var("icon", "")
                 show_status = get_button_var("show_status", False)
                 log_cmds = get_button_var("log_commands", False)
                 confirm = get_button_var("confirm", True)
                 mail_conditions = get_button_var("mail_conditions", [])
                 mail_machines = get_button_var("mail_machines", [])
-
+                compound = get_button_var("compound", tkinter.TOP)
                 # no defaults
-                cmd_line = section["line"] if "line" in section else 0
-                toml_file = section["origin_toml"] if "origin_toml" in section else settings_file
-                cmd = section["command"] if "command" in section else "no_command"
+                cmd_line = get_button_var("line", 0, False)
+                toml_file = get_button_var("origin_toml", settings_file, False)
+                cmd = get_button_var("command", "no_command", False)
                 
                 if "tip" in section:
                     tip = section["tip"]
@@ -727,10 +732,10 @@ def build_widgets():
                 name = section["name"] if "name" in section else sec
                 icon_subsample = section["icon_subsample"] if "icon_subsample" in section else (1,1)
                 image = get_image(icon, icon_subsample)
-                button = CmdButton(tab_button, sec, cmd, tab_envs, show_status, toml_file, cmd_line, log_dir+sec, log_cmds, confirm, mail_conditions, mail_machines, butts, text=name, image=image, compound="left")
-                configs = {}
+                button = CmdButton(tab_button, sec, cmd, tab_envs, show_status, toml_file, cmd_line, log_dir+sec, log_cmds, confirm, mail_conditions, mail_machines, butts, text=name, image=image)
+                configs = {"compound": compound}
                 for k in section:
-                    if k in ["command", "icon", "name", "image", "confirm"]: continue
+                    if k in handled_keys: continue
                     if k in button.configure().keys(): configs.update({k:section[k]})
                 try:
                     button.configure(configs)
@@ -741,7 +746,7 @@ def build_widgets():
                 tab_butts.append(button)
                 
             elif sec.startswith("buttons_"): defaults[sec.replace("buttons_", "")] = section
-            elif sec.startswith("env_"): tab_envs[sec.replace("env_", "")] = section
+            elif sec.startswith("env_"): tab_envs[sec] = section
             elif sec == "name": tab_name = section
             elif sec == "icon": tab_icon = section
             elif sec == "icon_subsample": tab_icon = section

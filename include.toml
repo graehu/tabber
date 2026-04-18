@@ -2,6 +2,7 @@ includes = ["tabber.toml"]
 
 [included.include]
 name = "inclusion test"
-command = "echo I\\'m included; sleep 2"
+command = "echo I\\'m included, the branch is: {env_branch}; sleep 2"
 icon = "tabber.png"
 icon_subsample = [16,16]
+compound = "left"
